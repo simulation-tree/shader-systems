@@ -31,10 +31,10 @@ namespace Shaders.Systems
             shaderQuery.Fill();
             foreach (Query<IsShader>.Result result in shaderQuery)
             {
-                EntityID shader = result.entity;
-                if (world.ContainsCollection<ShaderUniformProperty>(shader))
+                eint shader = result.entity;
+                if (world.ContainsList<ShaderUniformProperty>(shader))
                 {
-                    UnmanagedList<ShaderUniformProperty> uniformProperties = world.GetCollection<ShaderUniformProperty>(shader);
+                    UnmanagedList<ShaderUniformProperty> uniformProperties = world.GetList<ShaderUniformProperty>(shader);
                     for (uint i = 0; i < uniformProperties.Count; i++)
                     {
                         uniformProperties[i].Dispose();
@@ -66,31 +66,31 @@ namespace Shaders.Systems
         /// Updates the shader entity with up to date <see cref="ShaderUniformProperty"/>,
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
         /// </summary>
-        private void Update(EntityID shader, EntityID vertex, EntityID fragment)
+        private void Update(eint shader, eint vertex, eint fragment)
         {
-            UnmanagedList<byte> vertexBytes = world.GetCollection<byte>(vertex);
-            UnmanagedList<byte> fragmentBytes = world.GetCollection<byte>(fragment);
+            UnmanagedList<byte> vertexBytes = world.GetList<byte>(vertex);
+            UnmanagedList<byte> fragmentBytes = world.GetList<byte>(fragment);
             ReadOnlySpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertexBytes.AsSpan(), ShaderStage.Vertex);
             ReadOnlySpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragmentBytes.AsSpan(), ShaderStage.Fragment);
 
-            if (!world.ContainsCollection<ShaderUniformProperty>(shader))
+            if (!world.ContainsList<ShaderUniformProperty>(shader))
             {
-                world.CreateCollection<ShaderUniformProperty>(shader);
+                world.CreateList<ShaderUniformProperty>(shader);
             }
 
-            if (!world.ContainsCollection<ShaderSamplerProperty>(shader))
+            if (!world.ContainsList<ShaderSamplerProperty>(shader))
             {
-                world.CreateCollection<ShaderSamplerProperty>(shader);
+                world.CreateList<ShaderSamplerProperty>(shader);
             }
 
-            if (!world.ContainsCollection<ShaderVertexInputAttribute>(shader))
+            if (!world.ContainsList<ShaderVertexInputAttribute>(shader))
             {
-                world.CreateCollection<ShaderVertexInputAttribute>(shader);
+                world.CreateList<ShaderVertexInputAttribute>(shader);
             }
 
-            UnmanagedList<ShaderUniformProperty> uniformProperties = world.GetCollection<ShaderUniformProperty>(shader);
-            UnmanagedList<ShaderSamplerProperty> textureProperties = world.GetCollection<ShaderSamplerProperty>(shader);
-            UnmanagedList<ShaderVertexInputAttribute> vertexInputAttributes = world.GetCollection<ShaderVertexInputAttribute>(shader);
+            UnmanagedList<ShaderUniformProperty> uniformProperties = world.GetList<ShaderUniformProperty>(shader);
+            UnmanagedList<ShaderSamplerProperty> textureProperties = world.GetList<ShaderSamplerProperty>(shader);
+            UnmanagedList<ShaderVertexInputAttribute> vertexInputAttributes = world.GetList<ShaderVertexInputAttribute>(shader);
             for (uint i = 0; i < uniformProperties.Count; i++)
             {
                 uniformProperties[i].Dispose();

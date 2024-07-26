@@ -114,7 +114,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            using UnmanagedList<ShaderUniformProperty.Member> membersBuffer = new();
+            using UnmanagedList<ShaderUniformProperty.Member> membersBuffer = UnmanagedList<ShaderUniformProperty.Member>.Create();
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             uint startIndex = list.Count;
             foreach (spvc_reflected_resource resource in resourcesSpan)
@@ -260,9 +260,10 @@ namespace Shaders.Systems
             }
 
             string entryPoint = "main";
-            using BinaryWriter entryPointWriter = new();
+            using BinaryWriter entryPointWriter = BinaryWriter.Create();
             entryPointWriter.WriteUTF8Span(entryPoint);
             Span<byte> emptyStringBytes = stackalloc byte[1];
+            emptyStringBytes[0] = default;
             fixed (byte* entryPointPtr = entryPointWriter.AsSpan())
             {
                 fixed (byte* emptyStringPtr = emptyStringBytes)
@@ -274,8 +275,16 @@ namespace Shaders.Systems
                         uint errorCount = (uint)shaderc_result_get_num_errors(result);
                         if (errorCount > 0)
                         {
-                            string errorMessage = new((sbyte*)shaderc_result_get_error_message(result));
-                            throw new Exception($"Failed to compile shader: {errorMessage}");
+                            //string errorMessage = new();
+                            FixedString errorMessage = new((sbyte*)shaderc_result_get_error_message(result));
+                            if (TryParseError(errorMessage, out int index))
+                            {
+                                throw new Exception($"Failed to compile shader: Unknown token at {index}");
+                            }
+                            else
+                            {
+                                throw new Exception($"Failed to compile shader: {errorMessage}");
+                            }
                         }
                         else if (count == 0)
                         {
@@ -291,6 +300,29 @@ namespace Shaders.Systems
                     }
                 }
             }
+        }
+
+        private static bool TryParseError(FixedString message, out int value)
+        {
+            value = default;
+            Span<char> messageSpan = stackalloc char[FixedString.MaxLength];
+            int length = message.CopyTo(messageSpan);
+            int errorIndex = messageSpan.IndexOf(": error:");
+            if (errorIndex != -1)
+            {
+                Span<char> first = messageSpan[..errorIndex];
+                int colonIndex = first.LastIndexOf(':');
+                if (colonIndex != -1)
+                {
+                    Span<char> number = first[(colonIndex + 1)..];
+                    if (int.TryParse(number, out value))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static RuntimeType GetRuntimeType(spvc_type type, uint vectorSize)
