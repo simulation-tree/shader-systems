@@ -256,7 +256,7 @@ namespace Shaders.Systems
             }
             else
             {
-                throw new Exception("Unsupported shader stage");
+                throw new Exception($"Unsupported shader stage {shaderStage}");
             }
 
             string entryPoint = "main";

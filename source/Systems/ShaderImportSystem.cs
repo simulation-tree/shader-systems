@@ -51,13 +51,14 @@ namespace Shaders.Systems
         private void ImportShaders()
         {
             shaderQuery.Fill();
-            foreach (Query<IsShader>.Result result in shaderQuery)
+            foreach (var r in shaderQuery)
             {
-                ref IsShader shader = ref result.Component1;
+                ref IsShader shader = ref r.Component1;
                 if (shader.changed)
                 {
                     shader.changed = false;
-                    Update(result.entity, shader.vertex, shader.fragment);
+                    Update(r.entity, shader.vertex, shader.fragment);
+                    Console.WriteLine($"Shader `{r.entity}` compiled using v:{shader.vertex} f:{shader.fragment}");
                 }
             }
         }
@@ -65,6 +66,7 @@ namespace Shaders.Systems
         /// <summary>
         /// Updates the shader entity with up to date <see cref="ShaderUniformProperty"/>,
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
+        /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
         /// </summary>
         private void Update(eint shader, eint vertex, eint fragment)
         {
@@ -72,6 +74,10 @@ namespace Shaders.Systems
             UnmanagedList<byte> fragmentBytes = world.GetList<byte>(fragment);
             ReadOnlySpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertexBytes.AsSpan(), ShaderStage.Vertex);
             ReadOnlySpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragmentBytes.AsSpan(), ShaderStage.Fragment);
+            vertexBytes.Clear();
+            fragmentBytes.Clear();
+            vertexBytes.AddRange(spvVertex);
+            fragmentBytes.AddRange(spvFragment);
 
             if (!world.ContainsList<ShaderUniformProperty>(shader))
             {
