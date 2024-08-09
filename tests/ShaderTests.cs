@@ -15,6 +15,15 @@ namespace Shaders.Tests
         }
 
         [Test]
+        public void CheckResourceDescriptorKeyOrder()
+        {
+            DescriptorResourceKey key = new(4, 9);
+            Assert.That(key.Binding, Is.EqualTo(4));
+            Assert.That(key.Set, Is.EqualTo(9));
+            Assert.That(key.ToString(), Is.EqualTo("4:9"));
+        }
+
+        [Test]
         public void CompileGLSLToSPV()
         {
             string fragmentSource = 

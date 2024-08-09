@@ -31,7 +31,7 @@ namespace Shaders.Systems
 
         private void DisposeShaderUniformProperties()
         {
-            shaderQuery.Fill();
+            shaderQuery.Update();
             foreach (Query<IsShader>.Result result in shaderQuery)
             {
                 eint shader = result.entity;
@@ -53,7 +53,7 @@ namespace Shaders.Systems
 
         private void ImportShaders()
         {
-            shaderQuery.Fill();
+            shaderQuery.Update();
             foreach (var r in shaderQuery)
             {
                 ref IsShader shader = ref r.Component1;
