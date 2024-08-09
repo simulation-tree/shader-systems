@@ -10,11 +10,13 @@ namespace Shaders.Systems
     {
         private readonly Query<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
+        private readonly UnmanagedDictionary<eint, uint> shaderVersions;
 
         public ShaderImportSystem(World world) : base(world)
         {
             shaderQuery = new(world);
             shaderCompiler = new();
+            shaderVersions = new();
             Subscribe<ShaderUpdate>(Update);
         }
 
@@ -23,6 +25,7 @@ namespace Shaders.Systems
             DisposeShaderUniformProperties();
             shaderCompiler.Dispose();
             shaderQuery.Dispose();
+            shaderVersions.Dispose();
             base.Dispose();
         }
 
@@ -54,11 +57,23 @@ namespace Shaders.Systems
             foreach (var r in shaderQuery)
             {
                 ref IsShader shader = ref r.Component1;
-                if (shader.changed)
+                bool sourceChanged = false;
+                if (!shaderVersions.ContainsKey(r.entity))
                 {
-                    shader.changed = false;
+                    shaderVersions.Add(r.entity, default);
+                    sourceChanged = true;
+                }
+                else
+                {
+                    sourceChanged = shaderVersions[r.entity] != shader.version;
+                }
+
+                if (sourceChanged)
+                {
                     Update(r.entity, shader.vertex, shader.fragment);
-                    Console.WriteLine($"Shader `{r.entity}` compiled using v:{shader.vertex} f:{shader.fragment}");
+                    shader = new(shader.version + 1, shader.vertex, shader.fragment);
+                    shaderVersions[r.entity] = shader.version;
+                    Console.WriteLine($"Shader `{r.entity}` compiled with vertex `{shader.vertex}` and fragment `{shader.fragment}`");
                 }
             }
         }

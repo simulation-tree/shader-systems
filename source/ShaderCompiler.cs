@@ -141,7 +141,7 @@ namespace Shaders.Systems
                         membersBuffer.Add(new(runtimeType, memberName));
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(name, new((byte)set, (byte)binding), membersBuffer.AsSpan());
+                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), membersBuffer.AsSpan());
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
@@ -215,12 +215,12 @@ namespace Shaders.Systems
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
                 uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
-                string name = new(spvc_compiler_get_name(compiler, resource.id)); //todo: get the sbyte* pointer exposed
+                string name = new(spvc_compiler_get_name(compiler, resource.id)); //todo: efficiency: get the sbyte* pointer exposed
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.SampledImage)
                 {
-                    ShaderSamplerProperty texture = new(name, new((byte)set, (byte)binding));
+                    ShaderSamplerProperty texture = new(name, new((byte)binding, (byte)set));
                     list.Add(texture);
                 }
                 else
