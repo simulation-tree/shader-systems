@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -114,7 +115,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            using UnmanagedList<ShaderUniformProperty.Member> membersBuffer = UnmanagedList<ShaderUniformProperty.Member>.Create();
+            Span<ShaderUniformProperty.Member> membersBuffer = stackalloc ShaderUniformProperty.Member[16];
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             uint startIndex = list.Count;
             foreach (spvc_reflected_resource resource in resourcesSpan)
@@ -126,27 +127,75 @@ namespace Shaders.Systems
                 string name = new(spvc_compiler_get_name(compiler, resource.id));
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
-                uint baseTypeId = spvc_type_get_base_type_id(type);
                 if (baseType == Basetype.Struct)
                 {
+                    uint baseTypeId = spvc_type_get_base_type_id(type);
                     uint memberCount = spvc_type_get_num_member_types(type);
-                    membersBuffer.Clear();
                     for (uint m = 0; m < memberCount; m++)
                     {
                         uint memberTypeId = spvc_type_get_member_type(type, m);
                         spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                         uint vectorSize = spvc_type_get_vector_size(memberType);
                         RuntimeType runtimeType = GetRuntimeType(memberType, vectorSize);
-                        string memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, m));
-                        membersBuffer.Add(new(runtimeType, memberName));
+                        FixedString memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, m));
+                        membersBuffer[(int)m] = new(runtimeType, memberName);
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), membersBuffer.AsSpan());
+                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), membersBuffer[..(int)memberCount]);
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
                 {
                     throw new Exception($"Unsupported type: {baseType}");
+                }
+            }
+        }
+
+        public readonly void ReadPushConstantsFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderPushConstant> list)
+        {
+            ThrowIfDisposed();
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
+            if (result != Result.Success)
+            {
+                string? error = spvc_context_get_last_error_string(spvContext);
+                throw new Exception($"Failed to parse SPIR-V: {error ?? result.ToString()}");
+            }
+
+            result = spvc_context_create_compiler(spvContext, Backend.GLSL, parsedIr, CaptureMode.TakeOwnership, out spvc_compiler compiler);
+            if (result != Result.Success)
+            {
+                string? error = spvc_context_get_last_error_string(spvContext);
+                throw new Exception($"Failed to create SPIR-V compiler: {error ?? result.ToString()}");
+            }
+
+            spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
+            spvc_resources_get_resource_list_for_type(resources, ResourceType.PushConstant, out spvc_reflected_resource* resourceList, out nuint resourceCount);
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            Span<ShaderUniformProperty.Member> membersBuffer = stackalloc ShaderUniformProperty.Member[16];
+            spvc_buffer_range** ranges = stackalloc spvc_buffer_range*[16];
+            foreach (spvc_reflected_resource resource in resourcesSpan)
+            {
+                string name = new(spvc_compiler_get_name(compiler, resource.id));
+                spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
+                Basetype baseType = spvc_type_get_basetype(type);
+                if (baseType == Basetype.Struct)
+                {
+                    uint baseTypeId = spvc_type_get_base_type_id(type);
+                    nuint rangeCount;
+                    spvc_compiler_get_active_buffer_ranges(compiler, resource.id, ranges, &rangeCount);
+                    spvc_buffer_range* range = ranges[0];
+                    for (uint r = 0; r < rangeCount; r++)
+                    {
+                        spvc_buffer_range first = range[r];
+                        uint memberIndex = first.index;
+                        FixedString memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex));
+                        ShaderPushConstant pushConstant = new(name, memberName, (byte)first.offset, (byte)first.range);
+                        list.Insert(0, pushConstant);
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Unexpected type {baseType} for push constants");
                 }
             }
         }
@@ -275,16 +324,7 @@ namespace Shaders.Systems
                         uint errorCount = (uint)shaderc_result_get_num_errors(result);
                         if (errorCount > 0)
                         {
-                            //string errorMessage = new();
-                            FixedString errorMessage = new((sbyte*)shaderc_result_get_error_message(result));
-                            if (TryParseError(errorMessage, out int index))
-                            {
-                                throw new Exception($"Failed to compile shader: Unknown token at {index}");
-                            }
-                            else
-                            {
-                                throw new Exception($"Failed to compile shader: {errorMessage}");
-                            }
+                            throw new Exception(new string((sbyte*)shaderc_result_get_error_message(result)));
                         }
                         else if (count == 0)
                         {
@@ -302,7 +342,7 @@ namespace Shaders.Systems
             }
         }
 
-        private static bool TryParseError(FixedString message, out int value)
+        private static bool TryParseError(FixedString message, out uint value)
         {
             value = default;
             Span<char> messageSpan = stackalloc char[FixedString.MaxLength];
@@ -315,8 +355,9 @@ namespace Shaders.Systems
                 if (colonIndex != -1)
                 {
                     Span<char> number = first[(colonIndex + 1)..];
-                    if (int.TryParse(number, out value))
+                    if (int.TryParse(number, out int extremelyCringeContainerTypeForThisValue))
                     {
+                        value = (uint)extremelyCringeContainerTypeForThisValue;
                         return true;
                     }
                 }

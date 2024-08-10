@@ -94,6 +94,11 @@ namespace Shaders.Systems
             vertexBytes.AddRange(spvVertex);
             fragmentBytes.AddRange(spvFragment);
 
+            if (!world.ContainsList<ShaderPushConstant>(shader))
+            {
+                world.CreateList<ShaderPushConstant>(shader);
+            }
+
             if (!world.ContainsList<ShaderUniformProperty>(shader))
             {
                 world.CreateList<ShaderUniformProperty>(shader);
@@ -109,6 +114,7 @@ namespace Shaders.Systems
                 world.CreateList<ShaderVertexInputAttribute>(shader);
             }
 
+            UnmanagedList<ShaderPushConstant> pushConstants = world.GetList<ShaderPushConstant>(shader);
             UnmanagedList<ShaderUniformProperty> uniformProperties = world.GetList<ShaderUniformProperty>(shader);
             UnmanagedList<ShaderSamplerProperty> textureProperties = world.GetList<ShaderSamplerProperty>(shader);
             UnmanagedList<ShaderVertexInputAttribute> vertexInputAttributes = world.GetList<ShaderVertexInputAttribute>(shader);
@@ -117,11 +123,13 @@ namespace Shaders.Systems
                 uniformProperties[i].Dispose();
             }
 
+            pushConstants.Clear();
             uniformProperties.Clear();
             textureProperties.Clear();
             vertexInputAttributes.Clear();
 
             //populate shader entity with shader property data
+            shaderCompiler.ReadPushConstantsFromSPV(spvVertex, pushConstants);
             shaderCompiler.ReadUniformPropertiesFromSPV(spvVertex, uniformProperties);
             shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment, textureProperties);
             shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex, vertexInputAttributes);
