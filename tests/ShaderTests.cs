@@ -1,4 +1,5 @@
-﻿using Data.Systems;
+﻿using Data;
+using Data.Systems;
 using Shaders.Systems;
 using Simulation;
 using System.Numerics;
@@ -26,7 +27,7 @@ namespace Shaders.Tests
         [Test]
         public void CompileGLSLToSPV()
         {
-            string fragmentSource = 
+            string fragmentSource =
                 @"#version 450
 
                 layout(location = 0) in vec4 fragColor;
@@ -73,10 +74,10 @@ namespace Shaders.Tests
             using DataImportSystem dataImports = new(world);
             ShaderImportSystem shaderImports = new(world);
 
-            Data.Data vertexFile = new(world, "vertex.glsl");
+            DataSource vertexFile = new(world, "vertex.glsl");
             vertexFile.Write(vertexSource);
 
-            Data.Data fragmentFile = new(world, "fragment.glsl");
+            DataSource fragmentFile = new(world, "fragment.glsl");
             fragmentFile.Write(fragmentSource);
 
             using Shader shader = new(world, "vertex.glsl", "fragment.glsl");
