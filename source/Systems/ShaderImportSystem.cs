@@ -58,22 +58,25 @@ namespace Shaders.Systems
             {
                 ref IsShader shader = ref r.Component1;
                 bool sourceChanged = false;
-                if (!shaderVersions.ContainsKey(r.entity))
+                eint shaderEntity = r.entity;
+                if (!shaderVersions.ContainsKey(shaderEntity))
                 {
-                    shaderVersions.Add(r.entity, default);
+                    shaderVersions.Add(shaderEntity, default);
                     sourceChanged = true;
                 }
                 else
                 {
-                    sourceChanged = shaderVersions[r.entity] != shader.version;
+                    sourceChanged = shaderVersions[shaderEntity] != shader.version;
                 }
 
                 if (sourceChanged)
                 {
-                    Update(r.entity, shader.vertex, shader.fragment);
-                    shader = new(shader.version + 1, shader.vertex, shader.fragment);
-                    shaderVersions[r.entity] = shader.version;
-                    Console.WriteLine($"Shader `{r.entity}` compiled with vertex `{shader.vertex}` and fragment `{shader.fragment}`");
+                    eint vertexEntity = world.GetReference(shaderEntity, shader.vertexReference);
+                    eint fragmentEntity = world.GetReference(shaderEntity, shader.fragmentReference);
+                    Update(shaderEntity, vertexEntity, fragmentEntity);
+                    shader.version++;
+                    shaderVersions[shaderEntity] = shader.version;
+                    Console.WriteLine($"Shader `{shaderEntity}` compiled with vertex `{vertexEntity}` and fragment `{fragmentEntity}`");
                 }
             }
         }
