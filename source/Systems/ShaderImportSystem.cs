@@ -15,7 +15,7 @@ namespace Shaders.Systems
         private readonly Query<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
         private readonly UnmanagedDictionary<eint, uint> shaderVersions;
-        private readonly ConcurrentQueue<UnmanagedArray<Instruction>> operations;
+        private readonly ConcurrentQueue<Operation> operations;
 
         public ShaderImportSystem(World world) : base(world)
         {
@@ -29,13 +29,8 @@ namespace Shaders.Systems
 
         public override void Dispose()
         {
-            while (operations.TryDequeue(out UnmanagedArray<Instruction> operation))
+            while (operations.TryDequeue(out Operation operation))
             {
-                foreach (Instruction instruction in operation)
-                {
-                    instruction.Dispose();
-                }
-
                 operation.Dispose();
             }
 
@@ -72,16 +67,18 @@ namespace Shaders.Systems
 
                 if (sourceChanged)
                 {
-                    shaderVersions[shaderEntity] = request.version;
                     //ThreadPool.QueueUserWorkItem(ImportShaderDataOntoEntity, (shaderEntity, request), false);
-                    ImportShaderDataOntoEntity((shaderEntity, request));
+                    if (TryImportShaderDataOntoEntity((shaderEntity, request)))
+                    {
+                        shaderVersions[shaderEntity] = request.version;
+                    }
                 }
             }
         }
 
         private void PerformOperations()
         {
-            while (operations.TryDequeue(out UnmanagedArray<Instruction> operation))
+            while (operations.TryDequeue(out Operation operation))
             {
                 world.Perform(operation);
                 operation.Dispose();
@@ -93,102 +90,109 @@ namespace Shaders.Systems
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
         /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
         /// </summary>
-        private void ImportShaderDataOntoEntity((eint shader, IsShaderRequest request) input)
+        private bool TryImportShaderDataOntoEntity((eint shader, IsShaderRequest request) input)
         {
             eint shader = input.shader;
             IsShaderRequest request = input.request;
             DataRequest vertex = new(world, world.GetReference(shader, request.vertex));
             DataRequest fragment = new(world, world.GetReference(shader, request.fragment));
-            Console.WriteLine($"Waiting for shader request `{shader}` to have data available");
             while (!vertex.IsLoaded || !fragment.IsLoaded)
             {
-                Thread.Sleep(1);
+                Console.WriteLine($"Waiting for shader request `{shader}` to have data available");
+                //todo: fault: if data update performs after shader update, then this may never break, kinda scary
+                //Console.WriteLine("hanging shaders");
+                //Thread.Sleep(1);
+                return false;
             }
 
             Console.WriteLine($"Starting shader compilation for `{shader}`");
             ReadOnlySpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex);
             ReadOnlySpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment);
 
-            Span<Instruction> instructions = stackalloc Instruction[20];
-            int instructionCount = 0;
+            Operation operation = new();
             if (world.TryGetComponent(shader, out IsShader component))
             {
                 eint existingVertex = world.GetReference(shader, component.vertex);
                 eint existingFragment = world.GetReference(shader, component.fragment);
 
-                instructions[instructionCount++] = Instruction.SelectEntity(existingVertex);
-                instructions[instructionCount++] = Instruction.ClearList<byte>();
-                instructions[instructionCount++] = Instruction.AddElements(spvVertex);
+                operation.SelectEntity(existingVertex);
+                operation.ClearList<byte>();
+                operation.AppendToList(spvVertex);
+                operation.ClearSelection();
 
-                instructions[instructionCount++] = Instruction.SelectEntity(existingFragment);
-                instructions[instructionCount++] = Instruction.ClearList<byte>();
-                instructions[instructionCount++] = Instruction.AddElements(spvFragment);
+                operation.SelectEntity(existingFragment);
+                operation.ClearList<byte>();
+                operation.AppendToList(spvFragment);
+                operation.ClearSelection();
 
                 component.version++;
-                instructions[instructionCount++] = Instruction.SelectEntity(shader);
-                instructions[instructionCount++] = Instruction.SetComponent(component);
+                operation.SelectEntity(shader);
+                operation.SetComponent(component);
             }
             else
             {
-                instructions[instructionCount++] = Instruction.CreateEntity();
-                instructions[instructionCount++] = Instruction.CreateList<byte>();
-                instructions[instructionCount++] = Instruction.AddElements(spvVertex);
+                operation.CreateEntity();
+                operation.CreateList<byte>();
+                operation.AppendToList(spvVertex);
+                operation.ClearSelection();
 
-                instructions[instructionCount++] = Instruction.CreateEntity();
-                instructions[instructionCount++] = Instruction.CreateList<byte>();
-                instructions[instructionCount++] = Instruction.AddElements(spvFragment);
+                operation.CreateEntity();
+                operation.CreateList<byte>();
+                operation.AppendToList(spvFragment);
+                operation.ClearSelection();
 
-                instructions[instructionCount++] = Instruction.SelectEntity(shader);
-                instructions[instructionCount++] = Instruction.AddReference(1); //for vertex
-                instructions[instructionCount++] = Instruction.AddReference(0); //for fragment
+                operation.SelectEntity(shader);
+                operation.AddReference(1); //for vertex
+                operation.AddReference(0); //for fragment
 
-                instructions[instructionCount++] = Instruction.AddComponent(new IsShader((rint)1, (rint)2));
+                uint referenceCount = world.GetReferenceCount(shader);
+                operation.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
             }
 
             //make sure lists for shader properties exists
             if (!world.ContainsList<ShaderPushConstant>(shader))
             {
-                instructions[instructionCount++] = Instruction.CreateList<ShaderPushConstant>();
+                operation.CreateList<ShaderPushConstant>();
             }
             else
             {
-                instructions[instructionCount++] = Instruction.ClearList<ShaderPushConstant>();
+                operation.ClearList<ShaderPushConstant>();
             }
 
             if (!world.ContainsList<ShaderUniformProperty>(shader))
             {
-                instructions[instructionCount++] = Instruction.CreateList<ShaderUniformProperty>();
+                operation.CreateList<ShaderUniformProperty>();
             }
             else
             {
-                instructions[instructionCount++] = Instruction.ClearList<ShaderUniformProperty>();
+                operation.ClearList<ShaderUniformProperty>();
             }
 
             if (!world.ContainsList<ShaderUniformPropertyMember>(shader))
             {
-                instructions[instructionCount++] = Instruction.CreateList<ShaderUniformPropertyMember>();
+                operation.CreateList<ShaderUniformPropertyMember>();
             }
             else
             {
-                instructions[instructionCount++] = Instruction.ClearList<ShaderUniformPropertyMember>();
+                operation.ClearList<ShaderUniformPropertyMember>();
             }
 
             if (!world.ContainsList<ShaderSamplerProperty>(shader))
             {
-                instructions[instructionCount++] = Instruction.CreateList<ShaderSamplerProperty>();
+                operation.CreateList<ShaderSamplerProperty>();
             }
             else
             {
-                instructions[instructionCount++] = Instruction.ClearList<ShaderSamplerProperty>();
+                operation.ClearList<ShaderSamplerProperty>();
             }
 
             if (!world.ContainsList<ShaderVertexInputAttribute>(shader))
             {
-                instructions[instructionCount++] = Instruction.CreateList<ShaderVertexInputAttribute>();
+                operation.CreateList<ShaderVertexInputAttribute>();
             }
             else
             {
-                instructions[instructionCount++] = Instruction.ClearList<ShaderVertexInputAttribute>();
+                operation.ClearList<ShaderVertexInputAttribute>();
             }
 
             using UnmanagedList<ShaderPushConstant> pushConstants = new();
@@ -197,19 +201,20 @@ namespace Shaders.Systems
             using UnmanagedList<ShaderSamplerProperty> textureProperties = new();
             using UnmanagedList<ShaderVertexInputAttribute> vertexInputAttributes = new();
 
-            //populate shader entity with shader property data
+            //fill in shader data
             shaderCompiler.ReadPushConstantsFromSPV(spvVertex, pushConstants);
             shaderCompiler.ReadUniformPropertiesFromSPV(spvVertex, uniformProperties, uniformPropertyMembers);
             shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment, textureProperties);
             shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex, vertexInputAttributes);
 
-            instructions[instructionCount++] = Instruction.AddElements(pushConstants);
-            instructions[instructionCount++] = Instruction.AddElements(uniformProperties);
-            instructions[instructionCount++] = Instruction.AddElements(uniformPropertyMembers);
-            instructions[instructionCount++] = Instruction.AddElements(textureProperties);
-            instructions[instructionCount++] = Instruction.AddElements(vertexInputAttributes);
-            operations.Enqueue(new(instructions[..instructionCount]));
+            operation.AppendToList(pushConstants);
+            operation.AppendToList(uniformProperties);
+            operation.AppendToList(uniformPropertyMembers);
+            operation.AppendToList(textureProperties);
+            operation.AppendToList(vertexInputAttributes);
+            operations.Enqueue(operation);
             Console.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
+            return true;
         }
     }
 }

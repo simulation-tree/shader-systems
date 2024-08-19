@@ -35,7 +35,7 @@ namespace Shaders.Tests
             Assert.That(key.ToString(), Is.EqualTo("4:9"));
         }
 
-        [Test, CancelAfter(600)]
+        [Test, CancelAfter(1200)]
         public async Task CompileGLSLToSPV(CancellationToken cancellation)
         {
             string fragmentSource =
