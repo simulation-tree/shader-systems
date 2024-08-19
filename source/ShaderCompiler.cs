@@ -96,7 +96,7 @@ namespace Shaders.Systems
             return new ReadOnlySpan<byte>(compileResult, stringLength);
         }
 
-        public readonly void ReadUniformPropertiesFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderUniformProperty> list)
+        public readonly void ReadUniformPropertiesFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderUniformProperty> list, UnmanagedList<ShaderUniformPropertyMember> members)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
@@ -115,7 +115,6 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            Span<ShaderUniformProperty.Member> membersBuffer = stackalloc ShaderUniformProperty.Member[16];
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             uint startIndex = list.Count;
             foreach (spvc_reflected_resource resource in resourcesSpan)
@@ -131,6 +130,7 @@ namespace Shaders.Systems
                 {
                     uint baseTypeId = spvc_type_get_base_type_id(type);
                     uint memberCount = spvc_type_get_num_member_types(type);
+                    uint size = 0;
                     for (uint m = 0; m < memberCount; m++)
                     {
                         uint memberTypeId = spvc_type_get_member_type(type, m);
@@ -138,10 +138,11 @@ namespace Shaders.Systems
                         uint vectorSize = spvc_type_get_vector_size(memberType);
                         RuntimeType runtimeType = GetRuntimeType(memberType, vectorSize);
                         FixedString memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, m));
-                        membersBuffer[(int)m] = new(runtimeType, memberName);
+                        members.Add(new(name, runtimeType, memberName));
+                        size += runtimeType.Size;
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), membersBuffer[..(int)memberCount]);
+                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), size);
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
@@ -171,7 +172,6 @@ namespace Shaders.Systems
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.PushConstant, out spvc_reflected_resource* resourceList, out nuint resourceCount);
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
-            Span<ShaderUniformProperty.Member> membersBuffer = stackalloc ShaderUniformProperty.Member[16];
             spvc_buffer_range** ranges = stackalloc spvc_buffer_range*[16];
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {

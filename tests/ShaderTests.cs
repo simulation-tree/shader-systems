@@ -1,9 +1,13 @@
 ﻿using Data;
+using Data.Events;
 using Data.Systems;
 using Shaders.Systems;
 using Simulation;
 using System.Numerics;
+using System.Threading.Tasks;
+using System.Threading;
 using Unmanaged;
+using Shaders.Events;
 
 namespace Shaders.Tests
 {
@@ -15,6 +19,13 @@ namespace Shaders.Tests
             Allocations.ThrowIfAny();
         }
 
+        private void Simulate(World world)
+        {
+            world.Submit(new DataUpdate());
+            world.Submit(new ShaderUpdate());
+            world.Poll();
+        }
+
         [Test]
         public void CheckResourceDescriptorKeyOrder()
         {
@@ -24,8 +35,8 @@ namespace Shaders.Tests
             Assert.That(key.ToString(), Is.EqualTo("4:9"));
         }
 
-        [Test]
-        public void CompileGLSLToSPV()
+        [Test, CancelAfter(600)]
+        public async Task CompileGLSLToSPV(CancellationToken cancellation)
         {
             string fragmentSource =
                 @"#version 450
@@ -72,7 +83,8 @@ namespace Shaders.Tests
 
             using World world = new();
             using DataImportSystem dataImports = new(world);
-            ShaderImportSystem shaderImports = new(world);
+            using ShaderImportSystem shaderImports = new(world);
+            Simulate(world);
 
             DataSource vertexFile = new(world, "vertex.glsl");
             vertexFile.Write(vertexSource);
@@ -80,49 +92,57 @@ namespace Shaders.Tests
             DataSource fragmentFile = new(world, "fragment.glsl");
             fragmentFile.Write(fragmentSource);
 
-            using Shader shader = new(world, "vertex.glsl", "fragment.glsl");
+            Shader shader = new(world, "vertex.glsl", "fragment.glsl");
+            while (!shader.IsLoaded)
+            {
+                Simulate(world);
+                Thread.Sleep(1);
+                cancellation.ThrowIfCancellationRequested();
+            }
 
-            Assert.That(shader.GetVertexAttributes().Length, Is.EqualTo(2));
-            var first = shader.GetVertexAttributes()[0];
+            await shader.UntilLoaded(cancellation);
+
+            Assert.That(shader.VertexAttributes.Length, Is.EqualTo(2));
+            var first = shader.VertexAttributes[0];
             Assert.That(first.name.ToString(), Is.EqualTo("inPosition"));
             Assert.That(first.location, Is.EqualTo(0));
             Assert.That(first.binding, Is.EqualTo(0));
             Assert.That(first.offset, Is.EqualTo(0));
             Assert.That(first.type, Is.EqualTo(RuntimeType.Get<Vector3>()));
 
-            var second = shader.GetVertexAttributes()[1];
+            var second = shader.VertexAttributes[1];
             Assert.That(second.name.ToString(), Is.EqualTo("inUv"));
             Assert.That(second.location, Is.EqualTo(1));
             Assert.That(second.binding, Is.EqualTo(0));
             Assert.That(second.offset, Is.EqualTo(12));
             Assert.That(second.type, Is.EqualTo(RuntimeType.Get<Vector2>()));
 
-            Assert.That(shader.GetUniformProperties().Length, Is.EqualTo(1));
-            var cameraInfo = shader.GetUniformProperties()[0];
-            Assert.That(cameraInfo.name.ToString(), Is.EqualTo("cameraInfo"));
+            Assert.That(shader.UniformProperties.Length, Is.EqualTo(1));
+            var cameraInfo = shader.UniformProperties[0];
+            Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
             Assert.That(cameraInfo.key.Set, Is.EqualTo(0));
             Assert.That(cameraInfo.key.Binding, Is.EqualTo(2));
-            Assert.That(cameraInfo.Members.Length, Is.EqualTo(2));
+            Assert.That(shader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
 
-            ShaderUniformProperty.Member member = cameraInfo.Members[0];
+            ShaderUniformPropertyMember member = shader.GetMember("cameraInfo", 0);
             Assert.That(member.name.ToString(), Is.EqualTo("proj"));
-            member = cameraInfo.Members[1];
+            member = shader.GetMember("cameraInfo", 1);
             Assert.That(member.name.ToString(), Is.EqualTo("view"));
 
-            Assert.That(shader.GetSamplerProperties().Length, Is.EqualTo(1));
-            var texture = shader.GetSamplerProperties()[0];
+            Assert.That(shader.SamplerProperties.Length, Is.EqualTo(1));
+            var texture = shader.SamplerProperties[0];
             Assert.That(texture.key.Binding, Is.EqualTo(3));
             Assert.That(texture.key.Set, Is.EqualTo(0));
             Assert.That(texture.name.ToString(), Is.EqualTo("mainTexture"));
 
-            Assert.That(shader.GetPushConstants().Length, Is.EqualTo(2));
-            var entityColor = shader.GetPushConstants()[0];
+            Assert.That(shader.PushConstants.Length, Is.EqualTo(2));
+            var entityColor = shader.PushConstants[0];
             Assert.That(entityColor.propertyName.ToString(), Is.EqualTo("entity"));
             Assert.That(entityColor.memberName.ToString(), Is.EqualTo("color"));
             Assert.That(entityColor.size, Is.EqualTo(16));
             Assert.That(entityColor.offset, Is.EqualTo(0));
 
-            var entityModel = shader.GetPushConstants()[1];
+            var entityModel = shader.PushConstants[1];
             Assert.That(entityModel.propertyName.ToString(), Is.EqualTo("entity"));
             Assert.That(entityModel.memberName.ToString(), Is.EqualTo("model"));
             Assert.That(entityModel.size, Is.EqualTo(64));
@@ -130,7 +150,6 @@ namespace Shaders.Tests
 
             //manually disposed instead of `using`, otherwise the teardown
             //will throw too early
-            shaderImports.Dispose();
         }
     }
 }
