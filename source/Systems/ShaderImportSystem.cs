@@ -93,9 +93,9 @@ namespace Shaders.Systems
         {
             eint shader = input.shader;
             IsShaderRequest request = input.request;
-            DataRequest vertex = new(world, world.GetReference(shader, request.vertex));
-            DataRequest fragment = new(world, world.GetReference(shader, request.fragment));
-            while (!vertex.IsLoaded || !fragment.IsLoaded)
+            DataEntity vertex = new(world, world.GetReference(shader, request.vertex));
+            DataEntity fragment = new(world, world.GetReference(shader, request.fragment));
+            while (!vertex.Is() || !fragment.Is())
             {
                 Console.WriteLine($"Waiting for shader request `{shader}` to have data available");
                 //todo: fault: if data update performs after shader update, then this may never break, kinda scary

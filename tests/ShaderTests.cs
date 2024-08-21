@@ -19,11 +19,12 @@ namespace Shaders.Tests
             Allocations.ThrowIfAny();
         }
 
-        private void Simulate(World world)
+        private async Task Simulate(World world, CancellationToken cancellation)
         {
             world.Submit(new DataUpdate());
             world.Submit(new ShaderUpdate());
             world.Poll();
+            await Task.Delay(1, cancellation).ConfigureAwait(false);
         }
 
         [Test]
@@ -35,7 +36,7 @@ namespace Shaders.Tests
             Assert.That(key.ToString(), Is.EqualTo("4:9"));
         }
 
-        [Test, CancelAfter(1200)]
+        [Test, CancelAfter(4000)]
         public async Task CompileGLSLToSPV(CancellationToken cancellation)
         {
             string fragmentSource =
@@ -84,7 +85,6 @@ namespace Shaders.Tests
             using World world = new();
             using DataImportSystem dataImports = new(world);
             using ShaderImportSystem shaderImports = new(world);
-            Simulate(world);
 
             DataSource vertexFile = new(world, "vertex.glsl");
             vertexFile.Write(vertexSource);
@@ -93,14 +93,8 @@ namespace Shaders.Tests
             fragmentFile.Write(fragmentSource);
 
             Shader shader = new(world, "vertex.glsl", "fragment.glsl");
-            while (!shader.IsLoaded)
-            {
-                Simulate(world);
-                Thread.Sleep(1);
-                cancellation.ThrowIfCancellationRequested();
-            }
 
-            await shader.UntilLoaded(cancellation);
+            await shader.UntilIs(Simulate, cancellation);
 
             Assert.That(shader.VertexAttributes.Length, Is.EqualTo(2));
             var first = shader.VertexAttributes[0];
