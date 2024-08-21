@@ -57,7 +57,6 @@ namespace Shaders.Systems
                 eint shaderEntity = r.entity;
                 if (!shaderVersions.ContainsKey(shaderEntity))
                 {
-                    shaderVersions.Add(shaderEntity, default);
                     sourceChanged = true;
                 }
                 else
