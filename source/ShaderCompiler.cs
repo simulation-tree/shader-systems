@@ -346,7 +346,7 @@ namespace Shaders.Systems
         {
             value = default;
             Span<char> messageSpan = stackalloc char[FixedString.MaxLength];
-            int length = message.CopyTo(messageSpan);
+            int length = message.ToString(messageSpan);
             int errorIndex = messageSpan.IndexOf(": error:");
             if (errorIndex != -1)
             {
