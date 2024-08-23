@@ -93,8 +93,8 @@ namespace Shaders.Systems
         {
             eint shader = input.shader;
             IsShaderRequest request = input.request;
-            DataEntity vertex = new(world, world.GetReference(shader, request.vertex));
-            DataEntity fragment = new(world, world.GetReference(shader, request.fragment));
+            DataRequest vertex = new(world, world.GetReference(shader, request.vertex));
+            DataRequest fragment = new(world, world.GetReference(shader, request.fragment));
             while (!vertex.Is() || !fragment.Is())
             {
                 Console.WriteLine($"Waiting for shader request `{shader}` to have data available");
