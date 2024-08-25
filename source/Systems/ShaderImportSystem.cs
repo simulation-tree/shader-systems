@@ -4,7 +4,6 @@ using Shaders.Events;
 using Simulation;
 using System;
 using System.Collections.Concurrent;
-using System.Threading;
 using Unmanaged.Collections;
 
 namespace Shaders.Systems
@@ -69,7 +68,7 @@ namespace Shaders.Systems
                     //ThreadPool.QueueUserWorkItem(ImportShaderDataOntoEntity, (shaderEntity, request), false);
                     if (TryImportShaderDataOntoEntity((shaderEntity, request)))
                     {
-                        shaderVersions[shaderEntity] = request.version;
+                        shaderVersions.AddOrSet(shaderEntity, request.version);
                     }
                 }
             }
@@ -115,13 +114,13 @@ namespace Shaders.Systems
                 eint existingFragment = world.GetReference(shader, component.fragment);
 
                 operation.SelectEntity(existingVertex);
-                operation.ClearList<byte>();
-                operation.AppendToList(spvVertex);
+                operation.ResizeArray<byte>((uint)spvVertex.Length);
+                operation.SetArrayElement(0, spvVertex);
                 operation.ClearSelection();
 
                 operation.SelectEntity(existingFragment);
-                operation.ClearList<byte>();
-                operation.AppendToList(spvFragment);
+                operation.ResizeArray<byte>((uint)spvFragment.Length);
+                operation.SetArrayElement(0, spvFragment);
                 operation.ClearSelection();
 
                 component.version++;
@@ -131,13 +130,11 @@ namespace Shaders.Systems
             else
             {
                 operation.CreateEntity();
-                operation.CreateList<byte>();
-                operation.AppendToList(spvVertex);
+                operation.CreateArray<byte>(spvVertex);
                 operation.ClearSelection();
 
                 operation.CreateEntity();
-                operation.CreateList<byte>();
-                operation.AppendToList(spvFragment);
+                operation.CreateArray<byte>(spvFragment);
                 operation.ClearSelection();
 
                 operation.SelectEntity(shader);
@@ -146,52 +143,6 @@ namespace Shaders.Systems
 
                 uint referenceCount = world.GetReferenceCount(shader);
                 operation.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
-            }
-
-            //make sure lists for shader properties exists
-            if (!world.ContainsList<ShaderPushConstant>(shader))
-            {
-                operation.CreateList<ShaderPushConstant>();
-            }
-            else
-            {
-                operation.ClearList<ShaderPushConstant>();
-            }
-
-            if (!world.ContainsList<ShaderUniformProperty>(shader))
-            {
-                operation.CreateList<ShaderUniformProperty>();
-            }
-            else
-            {
-                operation.ClearList<ShaderUniformProperty>();
-            }
-
-            if (!world.ContainsList<ShaderUniformPropertyMember>(shader))
-            {
-                operation.CreateList<ShaderUniformPropertyMember>();
-            }
-            else
-            {
-                operation.ClearList<ShaderUniformPropertyMember>();
-            }
-
-            if (!world.ContainsList<ShaderSamplerProperty>(shader))
-            {
-                operation.CreateList<ShaderSamplerProperty>();
-            }
-            else
-            {
-                operation.ClearList<ShaderSamplerProperty>();
-            }
-
-            if (!world.ContainsList<ShaderVertexInputAttribute>(shader))
-            {
-                operation.CreateList<ShaderVertexInputAttribute>();
-            }
-            else
-            {
-                operation.ClearList<ShaderVertexInputAttribute>();
             }
 
             using UnmanagedList<ShaderPushConstant> pushConstants = new();
@@ -206,11 +157,57 @@ namespace Shaders.Systems
             shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment, textureProperties);
             shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex, vertexInputAttributes);
 
-            operation.AppendToList(pushConstants);
-            operation.AppendToList(uniformProperties);
-            operation.AppendToList(uniformPropertyMembers);
-            operation.AppendToList(textureProperties);
-            operation.AppendToList(vertexInputAttributes);
+            //make sure lists for shader properties exists
+            if (!world.ContainsArray<ShaderPushConstant>(shader))
+            {
+                operation.CreateArray<ShaderPushConstant>(pushConstants.AsSpan());
+            }
+            else
+            {
+                operation.ResizeArray<ShaderPushConstant>(pushConstants.Count);
+                operation.SetArrayElement(0, pushConstants.AsSpan());
+            }
+
+            if (!world.ContainsArray<ShaderUniformProperty>(shader))
+            {
+                operation.CreateArray<ShaderUniformProperty>(uniformProperties.AsSpan());
+            }
+            else
+            {
+                operation.ResizeArray<ShaderUniformProperty>(uniformProperties.Count);
+                operation.SetArrayElement(0, uniformProperties.AsSpan());
+            }
+
+            if (!world.ContainsArray<ShaderUniformPropertyMember>(shader))
+            {
+                operation.CreateArray<ShaderUniformPropertyMember>(uniformPropertyMembers.AsSpan());
+            }
+            else
+            {
+                operation.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count);
+                operation.SetArrayElement(0, uniformPropertyMembers.AsSpan());
+            }
+
+            if (!world.ContainsArray<ShaderSamplerProperty>(shader))
+            {
+                operation.CreateArray<ShaderSamplerProperty>(textureProperties.AsSpan());
+            }
+            else
+            {
+                operation.ResizeArray<ShaderSamplerProperty>(textureProperties.Count);
+                operation.SetArrayElement(0, textureProperties.AsSpan());
+            }
+
+            if (!world.ContainsArray<ShaderVertexInputAttribute>(shader))
+            {
+                operation.CreateArray<ShaderVertexInputAttribute>(vertexInputAttributes.AsSpan());
+            }
+            else
+            {
+                operation.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count);
+                operation.SetArrayElement(0, vertexInputAttributes.AsSpan());
+            }
+
             operations.Enqueue(operation);
             Console.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
             return true;
