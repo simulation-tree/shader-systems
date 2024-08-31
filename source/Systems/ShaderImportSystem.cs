@@ -13,7 +13,7 @@ namespace Shaders.Systems
         private readonly Query<IsShaderRequest> requestsQuery;
         private readonly Query<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
-        private readonly UnmanagedDictionary<eint, uint> shaderVersions;
+        private readonly UnmanagedDictionary<uint, uint> shaderVersions;
         private readonly ConcurrentQueue<Operation> operations;
 
         public ShaderImportSystem(World world) : base(world)
@@ -53,7 +53,7 @@ namespace Shaders.Systems
             {
                 IsShaderRequest request = r.Component1;
                 bool sourceChanged = false;
-                eint shaderEntity = r.entity;
+                uint shaderEntity = r.entity;
                 if (!shaderVersions.ContainsKey(shaderEntity))
                 {
                     sourceChanged = true;
@@ -88,9 +88,9 @@ namespace Shaders.Systems
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
         /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
         /// </summary>
-        private bool TryImportShaderDataOntoEntity((eint shader, IsShaderRequest request) input)
+        private bool TryImportShaderDataOntoEntity((uint shader, IsShaderRequest request) input)
         {
-            eint shader = input.shader;
+            uint shader = input.shader;
             IsShaderRequest request = input.request;
             DataRequest vertex = new(world, world.GetReference(shader, request.vertex));
             DataRequest fragment = new(world, world.GetReference(shader, request.fragment));
@@ -110,8 +110,8 @@ namespace Shaders.Systems
             Operation operation = new();
             if (world.TryGetComponent(shader, out IsShader component))
             {
-                eint existingVertex = world.GetReference(shader, component.vertex);
-                eint existingFragment = world.GetReference(shader, component.fragment);
+                uint existingVertex = world.GetReference(shader, component.vertex);
+                uint existingFragment = world.GetReference(shader, component.fragment);
 
                 operation.SelectEntity(existingVertex);
                 operation.ResizeArray<byte>((uint)spvVertex.Length);
@@ -138,8 +138,8 @@ namespace Shaders.Systems
                 operation.ClearSelection();
 
                 operation.SelectEntity(shader);
-                operation.AddReference(1); //for vertex
-                operation.AddReference(0); //for fragment
+                operation.AddReferenceTowardsPreviouslyCreatedEntity(1); //for vertex
+                operation.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
 
                 uint referenceCount = world.GetReferenceCount(shader);
                 operation.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
