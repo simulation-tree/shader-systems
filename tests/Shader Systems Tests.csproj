@@ -7,8 +7,6 @@
 		<Nullable>enable</Nullable>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
-		<BaseOutputPath>bin~\</BaseOutputPath>
-		<BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>

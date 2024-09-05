@@ -94,9 +94,9 @@ namespace Shaders.Tests
 
             Shader shader = new(world, "vertex.glsl", "fragment.glsl");
 
-            await shader.UntilIs(Simulate, cancellation);
+            await shader.UntilCompliant(Simulate, cancellation);
 
-            Assert.That(shader.VertexAttributes.Length, Is.EqualTo(2));
+            Assert.That(shader.VertexAttributes.length, Is.EqualTo(2));
             var first = shader.VertexAttributes[0];
             Assert.That(first.name.ToString(), Is.EqualTo("inPosition"));
             Assert.That(first.location, Is.EqualTo(0));
@@ -111,7 +111,7 @@ namespace Shaders.Tests
             Assert.That(second.offset, Is.EqualTo(12));
             Assert.That(second.type, Is.EqualTo(RuntimeType.Get<Vector2>()));
 
-            Assert.That(shader.UniformProperties.Length, Is.EqualTo(1));
+            Assert.That(shader.UniformProperties.length, Is.EqualTo(1));
             var cameraInfo = shader.UniformProperties[0];
             Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
             Assert.That(cameraInfo.key.Set, Is.EqualTo(0));
@@ -123,13 +123,13 @@ namespace Shaders.Tests
             member = shader.GetMember("cameraInfo", 1);
             Assert.That(member.name.ToString(), Is.EqualTo("view"));
 
-            Assert.That(shader.SamplerProperties.Length, Is.EqualTo(1));
+            Assert.That(shader.SamplerProperties.length, Is.EqualTo(1));
             var texture = shader.SamplerProperties[0];
             Assert.That(texture.key.Binding, Is.EqualTo(3));
             Assert.That(texture.key.Set, Is.EqualTo(0));
             Assert.That(texture.name.ToString(), Is.EqualTo("mainTexture"));
 
-            Assert.That(shader.PushConstants.Length, Is.EqualTo(2));
+            Assert.That(shader.PushConstants.length, Is.EqualTo(2));
             var entityColor = shader.PushConstants[0];
             Assert.That(entityColor.propertyName.ToString(), Is.EqualTo("entity"));
             Assert.That(entityColor.memberName.ToString(), Is.EqualTo("color"));

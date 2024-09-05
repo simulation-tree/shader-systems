@@ -4,22 +4,23 @@ using Shaders.Events;
 using Simulation;
 using System;
 using System.Collections.Concurrent;
+using Unmanaged;
 using Unmanaged.Collections;
 
 namespace Shaders.Systems
 {
     public class ShaderImportSystem : SystemBase
     {
-        private readonly Query<IsShaderRequest> requestsQuery;
-        private readonly Query<IsShader> shaderQuery;
+        private readonly ComponentQuery<IsShaderRequest> requestsQuery;
+        private readonly ComponentQuery<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
         private readonly UnmanagedDictionary<uint, uint> shaderVersions;
         private readonly ConcurrentQueue<Operation> operations;
 
         public ShaderImportSystem(World world) : base(world)
         {
-            requestsQuery = new(world);
-            shaderQuery = new(world);
+            requestsQuery = new();
+            shaderQuery = new();
             shaderCompiler = new();
             shaderVersions = new();
             operations = new();
@@ -48,7 +49,7 @@ namespace Shaders.Systems
 
         private void ImportShaders()
         {
-            requestsQuery.Update();
+            requestsQuery.Update(world);
             foreach (var r in requestsQuery)
             {
                 IsShaderRequest request = r.Component1;
@@ -94,7 +95,7 @@ namespace Shaders.Systems
             IsShaderRequest request = input.request;
             DataRequest vertex = new(world, world.GetReference(shader, request.vertex));
             DataRequest fragment = new(world, world.GetReference(shader, request.fragment));
-            while (!vertex.Is() || !fragment.Is())
+            while (!vertex.IsCompliant() || !fragment.IsCompliant())
             {
                 Console.WriteLine($"Waiting for shader request `{shader}` to have data available");
                 //todo: fault: if data update performs after shader update, then this may never break, kinda scary
@@ -104,8 +105,8 @@ namespace Shaders.Systems
             }
 
             Console.WriteLine($"Starting shader compilation for `{shader}`");
-            ReadOnlySpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex);
-            ReadOnlySpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment);
+            USpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex);
+            USpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment);
 
             Operation operation = new();
             if (world.TryGetComponent(shader, out IsShader component))
@@ -114,12 +115,12 @@ namespace Shaders.Systems
                 uint existingFragment = world.GetReference(shader, component.fragment);
 
                 operation.SelectEntity(existingVertex);
-                operation.ResizeArray<byte>((uint)spvVertex.Length);
+                operation.ResizeArray<byte>(spvVertex.length);
                 operation.SetArrayElement(0, spvVertex);
                 operation.ClearSelection();
 
                 operation.SelectEntity(existingFragment);
-                operation.ResizeArray<byte>((uint)spvFragment.Length);
+                operation.ResizeArray<byte>(spvFragment.length);
                 operation.SetArrayElement(0, spvFragment);
                 operation.ClearSelection();
 

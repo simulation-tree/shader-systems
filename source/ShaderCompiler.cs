@@ -56,10 +56,10 @@ namespace Shaders.Systems
             valid = false;
         }
 
-        public readonly ReadOnlySpan<byte> SPVToGLSL(ReadOnlySpan<byte> bytes)
+        public readonly USpan<byte> SPVToGLSL(USpan<byte> bytes)
         {
             ThrowIfDisposed();
-            var result = spvc_context_parse_spirv(spvContext, bytes, out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, bytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -86,19 +86,19 @@ namespace Shaders.Systems
                 throw new Exception($"Failed to compile SPIR-V: {error}");
             }
 
-            int stringLength = 0;
+            uint stringLength = 0;
             while (compileResult[stringLength] != 0)
             {
                 stringLength++;
             }
 
-            return new ReadOnlySpan<byte>(compileResult, stringLength);
+            return new USpan<byte>(compileResult, stringLength);
         }
 
-        public readonly void ReadUniformPropertiesFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderUniformProperty> list, UnmanagedList<ShaderUniformPropertyMember> members)
+        public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderUniformProperty> list, UnmanagedList<ShaderUniformPropertyMember> members)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -114,15 +114,15 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
             uint startIndex = list.Count;
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
-                uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
-                uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset);
-                string name = new(spvc_compiler_get_name(compiler, resource.id));
+                //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
+                //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset);
+                FixedString nameText = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.Struct)
@@ -136,12 +136,11 @@ namespace Shaders.Systems
                         spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                         uint vectorSize = spvc_type_get_vector_size(memberType);
                         RuntimeType runtimeType = GetRuntimeType(memberType, vectorSize);
-                        FixedString memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, m));
-                        members.Add(new(name, runtimeType, memberName));
+                        members.Add(new(nameText, runtimeType, new FixedString(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
                         size += runtimeType.Size;
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(name, new((byte)binding, (byte)set), size);
+                    ShaderUniformProperty uniformBuffer = new(nameText, new((byte)binding, (byte)set), size);
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
@@ -151,10 +150,10 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadPushConstantsFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderPushConstant> list)
+        public readonly void ReadPushConstantsFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderPushConstant> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -170,7 +169,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.PushConstant, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
             spvc_buffer_range** ranges = stackalloc spvc_buffer_range*[16];
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
@@ -187,7 +186,7 @@ namespace Shaders.Systems
                     {
                         spvc_buffer_range first = range[r];
                         uint memberIndex = first.index;
-                        FixedString memberName = new(spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex));
+                        FixedString memberName = new(new string(spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex)));
                         ShaderPushConstant pushConstant = new(name, memberName, (byte)first.offset, (byte)first.range);
                         list.Insert(0, pushConstant);
                     }
@@ -202,10 +201,10 @@ namespace Shaders.Systems
         /// <summary>
         /// Reads all vertex input attributes from the given SPIR-V bytes.
         /// </summary>
-        public readonly void ReadVertexInputAttributesFromSPV(ReadOnlySpan<byte> vertexBytes, UnmanagedList<ShaderVertexInputAttribute> list)
+        public readonly void ReadVertexInputAttributesFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderVertexInputAttribute> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -221,7 +220,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.StageInput, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
             byte offset = 0;
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
@@ -238,10 +237,10 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadTexturePropertiesFromSPV(ReadOnlySpan<byte> fragmentBytes, UnmanagedList<ShaderSamplerProperty> list)
+        public readonly void ReadTexturePropertiesFromSPV(USpan<byte> fragmentBytes, UnmanagedList<ShaderSamplerProperty> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, fragmentBytes, out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, fragmentBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -257,13 +256,13 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.SampledImage, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
-                uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
-                string name = new(spvc_compiler_get_name(compiler, resource.id)); //todo: efficiency: get the sbyte* pointer exposed
+                //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
+                string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty; //todo: efficiency: get the sbyte* pointer exposed
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.SampledImage)
@@ -281,7 +280,7 @@ namespace Shaders.Systems
         /// <summary>
         /// Converts the given UTF8 bytes from GLSL to SPIR-V.
         /// </summary>
-        public readonly ReadOnlySpan<byte> GLSLToSPV(ReadOnlySpan<byte> bytes, ShaderStage shaderStage)
+        public readonly USpan<byte> GLSLToSPV(USpan<byte> bytes, ShaderStage shaderStage)
         {
             ThrowIfDisposed();
 
@@ -309,60 +308,28 @@ namespace Shaders.Systems
 
             string entryPoint = "main";
             using BinaryWriter entryPointWriter = BinaryWriter.Create();
-            entryPointWriter.WriteUTF8Span(entryPoint);
-            Span<byte> emptyStringBytes = stackalloc byte[1];
+            entryPointWriter.WriteUTF8Text(entryPoint);
+            USpan<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
-            fixed (byte* entryPointPtr = entryPointWriter.AsSpan())
+            USpan<byte> entryPointBytes = entryPointWriter.GetBytes();
+            nint result = shaderc_compile_into_spv(pointer, bytes.pointer, bytes.length, (int)bytesFormat, emptyStringBytes.pointer, entryPointBytes.pointer, options.pointer);
+            uint count = (uint)shaderc_result_get_length(result);
+            uint errorCount = (uint)shaderc_result_get_num_errors(result);
+            if (errorCount > 0)
             {
-                fixed (byte* emptyStringPtr = emptyStringBytes)
-                {
-                    fixed (byte* source = bytes)
-                    {
-                        nint result = shaderc_compile_into_spv(pointer, source, (nuint)bytes.Length, (int)bytesFormat, emptyStringPtr, entryPointPtr, options.pointer);
-                        int count = (int)shaderc_result_get_length(result);
-                        uint errorCount = (uint)shaderc_result_get_num_errors(result);
-                        if (errorCount > 0)
-                        {
-                            throw new Exception(new string((sbyte*)shaderc_result_get_error_message(result)));
-                        }
-                        else if (count == 0)
-                        {
-                            throw new Exception("Failed to compile shader: empty result");
-                        }
-                        else if (result == 0)
-                        {
-                            Status status = shaderc_result_get_compilation_status(pointer);
-                            throw new Exception($"Failed to compile shader: {status}");
-                        }
-
-                        return new Span<byte>(shaderc_result_get_bytes(result), count);
-                    }
-                }
+                throw new Exception(new string((sbyte*)shaderc_result_get_error_message(result)));
             }
-        }
-
-        private static bool TryParseError(FixedString message, out uint value)
-        {
-            value = default;
-            Span<char> messageSpan = stackalloc char[FixedString.MaxLength];
-            int length = message.ToString(messageSpan);
-            int errorIndex = messageSpan.IndexOf(": error:");
-            if (errorIndex != -1)
+            else if (count == 0)
             {
-                Span<char> first = messageSpan[..errorIndex];
-                int colonIndex = first.LastIndexOf(':');
-                if (colonIndex != -1)
-                {
-                    Span<char> number = first[(colonIndex + 1)..];
-                    if (int.TryParse(number, out int extremelyCringeContainerTypeForThisValue))
-                    {
-                        value = (uint)extremelyCringeContainerTypeForThisValue;
-                        return true;
-                    }
-                }
+                throw new Exception("Failed to compile shader: empty result");
+            }
+            else if (result == 0)
+            {
+                Status status = shaderc_result_get_compilation_status(pointer);
+                throw new Exception($"Failed to compile shader: {status}");
             }
 
-            return false;
+            return new USpan<byte>(shaderc_result_get_bytes(result), count);
         }
 
         private static RuntimeType GetRuntimeType(spvc_type type, uint vectorSize)
