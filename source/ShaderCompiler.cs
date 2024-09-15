@@ -312,7 +312,7 @@ namespace Shaders.Systems
             USpan<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
             USpan<byte> entryPointBytes = entryPointWriter.GetBytes();
-            nint result = shaderc_compile_into_spv(pointer, bytes.pointer, bytes.length, (int)bytesFormat, emptyStringBytes.pointer, entryPointBytes.pointer, options.pointer);
+            nint result = shaderc_compile_into_spv(pointer, bytes.pointer, bytes.Length, (int)bytesFormat, emptyStringBytes.pointer, entryPointBytes.pointer, options.pointer);
             uint count = (uint)shaderc_result_get_length(result);
             uint errorCount = (uint)shaderc_result_get_num_errors(result);
             if (errorCount > 0)

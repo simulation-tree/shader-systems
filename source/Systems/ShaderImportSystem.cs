@@ -115,12 +115,12 @@ namespace Shaders.Systems
                 uint existingFragment = world.GetReference(shader, component.fragment);
 
                 operation.SelectEntity(existingVertex);
-                operation.ResizeArray<byte>(spvVertex.length);
+                operation.ResizeArray<byte>(spvVertex.Length);
                 operation.SetArrayElement(0, spvVertex);
                 operation.ClearSelection();
 
                 operation.SelectEntity(existingFragment);
-                operation.ResizeArray<byte>(spvFragment.length);
+                operation.ResizeArray<byte>(spvFragment.Length);
                 operation.SetArrayElement(0, spvFragment);
                 operation.ClearSelection();
 
