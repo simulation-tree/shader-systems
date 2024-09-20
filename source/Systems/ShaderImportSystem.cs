@@ -116,12 +116,12 @@ namespace Shaders.Systems
 
                 operation.SelectEntity(existingVertex);
                 operation.ResizeArray<byte>(spvVertex.Length);
-                operation.SetArrayElement(0, spvVertex);
+                operation.SetArrayElements(0, spvVertex);
                 operation.ClearSelection();
 
                 operation.SelectEntity(existingFragment);
                 operation.ResizeArray<byte>(spvFragment.Length);
-                operation.SetArrayElement(0, spvFragment);
+                operation.SetArrayElements(0, spvFragment);
                 operation.ClearSelection();
 
                 component.version++;
@@ -166,7 +166,7 @@ namespace Shaders.Systems
             else
             {
                 operation.ResizeArray<ShaderPushConstant>(pushConstants.Count);
-                operation.SetArrayElement(0, pushConstants.AsSpan());
+                operation.SetArrayElements(0, pushConstants.AsSpan());
             }
 
             if (!world.ContainsArray<ShaderUniformProperty>(shader))
@@ -176,7 +176,7 @@ namespace Shaders.Systems
             else
             {
                 operation.ResizeArray<ShaderUniformProperty>(uniformProperties.Count);
-                operation.SetArrayElement(0, uniformProperties.AsSpan());
+                operation.SetArrayElements(0, uniformProperties.AsSpan());
             }
 
             if (!world.ContainsArray<ShaderUniformPropertyMember>(shader))
@@ -186,7 +186,7 @@ namespace Shaders.Systems
             else
             {
                 operation.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count);
-                operation.SetArrayElement(0, uniformPropertyMembers.AsSpan());
+                operation.SetArrayElements(0, uniformPropertyMembers.AsSpan());
             }
 
             if (!world.ContainsArray<ShaderSamplerProperty>(shader))
@@ -196,7 +196,7 @@ namespace Shaders.Systems
             else
             {
                 operation.ResizeArray<ShaderSamplerProperty>(textureProperties.Count);
-                operation.SetArrayElement(0, textureProperties.AsSpan());
+                operation.SetArrayElements(0, textureProperties.AsSpan());
             }
 
             if (!world.ContainsArray<ShaderVertexInputAttribute>(shader))
@@ -206,7 +206,7 @@ namespace Shaders.Systems
             else
             {
                 operation.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count);
-                operation.SetArrayElement(0, vertexInputAttributes.AsSpan());
+                operation.SetArrayElements(0, vertexInputAttributes.AsSpan());
             }
 
             operations.Enqueue(operation);
