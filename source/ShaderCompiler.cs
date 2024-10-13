@@ -312,7 +312,7 @@ namespace Shaders.Systems
             USpan<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
             USpan<byte> entryPointBytes = entryPointWriter.GetBytes();
-            nint result = shaderc_compile_into_spv(pointer, bytes.pointer, bytes.Length, (int)bytesFormat, emptyStringBytes.pointer, entryPointBytes.pointer, options.pointer);
+            nint result = shaderc_compile_into_spv(pointer, (byte*)bytes.Address, bytes.Length, (int)bytesFormat, (byte*)emptyStringBytes.Address, (byte*)entryPointBytes.Address, options.address);
             uint count = (uint)shaderc_result_get_length(result);
             uint errorCount = (uint)shaderc_result_get_num_errors(result);
             if (errorCount > 0)
@@ -505,16 +505,16 @@ namespace Shaders.Systems
 
         public readonly struct Options : IDisposable
         {
-            public readonly nint pointer;
+            public readonly nint address;
 
             public Options()
             {
-                pointer = shaderc_compile_options_initialize();
+                address = shaderc_compile_options_initialize();
             }
 
             public readonly void Dispose()
             {
-                shaderc_compile_options_release(pointer);
+                shaderc_compile_options_release(address);
             }
         }
 
