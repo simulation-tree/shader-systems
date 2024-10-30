@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Collections;
+using System;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unmanaged;
-using Unmanaged.Collections;
 using Vortice.ShaderCompiler;
 using Vortice.SpirvCross;
 using static Vortice.SpirvCross.SpirvCrossApi;
@@ -95,7 +95,7 @@ namespace Shaders.Systems
             return new USpan<byte>(compileResult, stringLength);
         }
 
-        public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderUniformProperty> list, UnmanagedList<ShaderUniformPropertyMember> members)
+        public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
@@ -150,7 +150,7 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadPushConstantsFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderPushConstant> list)
+        public readonly void ReadPushConstantsFromSPV(USpan<byte> vertexBytes, List<ShaderPushConstant> list)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
@@ -201,7 +201,7 @@ namespace Shaders.Systems
         /// <summary>
         /// Reads all vertex input attributes from the given SPIR-V bytes.
         /// </summary>
-        public readonly void ReadVertexInputAttributesFromSPV(USpan<byte> vertexBytes, UnmanagedList<ShaderVertexInputAttribute> list)
+        public readonly void ReadVertexInputAttributesFromSPV(USpan<byte> vertexBytes, List<ShaderVertexInputAttribute> list)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
@@ -237,7 +237,7 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadTexturePropertiesFromSPV(USpan<byte> fragmentBytes, UnmanagedList<ShaderSamplerProperty> list)
+        public readonly void ReadTexturePropertiesFromSPV(USpan<byte> fragmentBytes, List<ShaderSamplerProperty> list)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, fragmentBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);

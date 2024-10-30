@@ -1,4 +1,5 @@
-﻿using Data;
+﻿using Collections;
+using Data;
 using Shaders.Components;
 using Simulation;
 using Simulation.Functions;
@@ -6,7 +7,6 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Unmanaged;
-using Unmanaged.Collections;
 
 namespace Shaders.Systems
 {
@@ -15,8 +15,8 @@ namespace Shaders.Systems
         private readonly ComponentQuery<IsShaderRequest> requestsQuery;
         private readonly ComponentQuery<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
-        private readonly UnmanagedDictionary<Entity, uint> shaderVersions;
-        private readonly UnmanagedList<Operation> operations;
+        private readonly Dictionary<Entity, uint> shaderVersions;
+        private readonly List<Operation> operations;
 
         readonly unsafe InitializeFunction ISystem.Initialize => new(&Initialize);
         readonly unsafe IterateFunction ISystem.Update => new(&Update);
@@ -174,11 +174,11 @@ namespace Shaders.Systems
                 operation.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
             }
 
-            using UnmanagedList<ShaderPushConstant> pushConstants = new();
-            using UnmanagedList<ShaderUniformProperty> uniformProperties = new();
-            using UnmanagedList<ShaderUniformPropertyMember> uniformPropertyMembers = new();
-            using UnmanagedList<ShaderSamplerProperty> textureProperties = new();
-            using UnmanagedList<ShaderVertexInputAttribute> vertexInputAttributes = new();
+            using List<ShaderPushConstant> pushConstants = new();
+            using List<ShaderUniformProperty> uniformProperties = new();
+            using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
+            using List<ShaderSamplerProperty> textureProperties = new();
+            using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
 
             //fill in shader data
             shaderCompiler.ReadPushConstantsFromSPV(spvVertex, pushConstants);
