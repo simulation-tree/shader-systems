@@ -287,7 +287,7 @@ namespace Shaders.Systems
             ShaderKind bytesFormat = default;
             if (shaderStage == ShaderStage.Fragment)
             {
-                bytesFormat = ShaderKind.GLSLDefaultFragmentShader;
+                bytesFormat = ShaderKind.FragmentShader;
             }
             else if (shaderStage == ShaderStage.Vertex)
             {
