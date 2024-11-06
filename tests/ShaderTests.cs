@@ -92,8 +92,8 @@ namespace Shaders.Tests
             Assert.That(shader.UniformProperties.Length, Is.EqualTo(1));
             ShaderUniformProperty cameraInfo = shader.UniformProperties[0];
             Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
-            Assert.That(cameraInfo.key.Set, Is.EqualTo(0));
-            Assert.That(cameraInfo.key.Binding, Is.EqualTo(2));
+            Assert.That(cameraInfo.binding, Is.EqualTo(2));
+            Assert.That(cameraInfo.set, Is.EqualTo(0));
             Assert.That(shader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
 
             ShaderUniformPropertyMember member = shader.GetMember("cameraInfo", 0);
@@ -103,8 +103,8 @@ namespace Shaders.Tests
 
             Assert.That(shader.SamplerProperties.Length, Is.EqualTo(1));
             ShaderSamplerProperty texture = shader.SamplerProperties[0];
-            Assert.That(texture.key.Binding, Is.EqualTo(3));
-            Assert.That(texture.key.Set, Is.EqualTo(0));
+            Assert.That(texture.binding, Is.EqualTo(3));
+            Assert.That(texture.set, Is.EqualTo(0));
             Assert.That(texture.name.ToString(), Is.EqualTo("mainTexture"));
 
             Assert.That(shader.PushConstants.Length, Is.EqualTo(2));

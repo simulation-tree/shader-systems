@@ -140,7 +140,7 @@ namespace Shaders.Systems
                         size += runtimeType.Size;
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(nameText, new((byte)binding, (byte)set), size);
+                    ShaderUniformProperty uniformBuffer = new(nameText, (byte)binding, (byte)set, size);
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
@@ -267,7 +267,7 @@ namespace Shaders.Systems
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.SampledImage)
                 {
-                    ShaderSamplerProperty texture = new(name, new((byte)binding, (byte)set));
+                    ShaderSamplerProperty texture = new(name, (byte)binding, (byte)set);
                     list.Add(texture);
                 }
                 else
