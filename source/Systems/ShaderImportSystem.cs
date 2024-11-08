@@ -125,14 +125,14 @@ namespace Shaders.Systems
             DataRequest fragment = new(world, shader.GetReference(request.fragment));
             while (!vertex.IsCompliant() || !fragment.IsCompliant())
             {
-                Debug.WriteLine($"Waiting for shader request `{shader}` to have data available");
+                Trace.WriteLine($"Waiting for shader request `{shader}` to have data available");
                 //todo: fault: if data update performs after shader update, then this may never break, kinda scary
                 //Console.WriteLine("hanging shaders");
                 //Thread.Sleep(1);
                 return false;
             }
 
-            Debug.WriteLine($"Starting shader compilation for `{shader}`");
+            Trace.WriteLine($"Starting shader compilation for `{shader}`");
             USpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex);
             USpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment);
 
@@ -238,7 +238,7 @@ namespace Shaders.Systems
             }
 
             operations.Add(operation);
-            Debug.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
+            Trace.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
             return true;
         }
     }
