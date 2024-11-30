@@ -1,5 +1,6 @@
 ﻿using Collections;
 using Data;
+using Data.Components;
 using Shaders.Components;
 using Simulation;
 using Simulation.Functions;
@@ -7,6 +8,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Unmanaged;
+using Worlds;
 
 namespace Shaders.Systems
 {
@@ -18,12 +20,12 @@ namespace Shaders.Systems
         private readonly Dictionary<Entity, uint> shaderVersions;
         private readonly List<Operation> operations;
 
-        readonly unsafe InitializeFunction ISystem.Initialize => new(&Initialize);
-        readonly unsafe IterateFunction ISystem.Iterate => new(&Update);
-        readonly unsafe FinalizeFunction ISystem.Finalize => new(&Finalize);
+        readonly unsafe StartSystem ISystem.Start => new(&Start);
+        readonly unsafe UpdateSystem ISystem.Update => new(&Update);
+        readonly unsafe FinishSystem ISystem.Finish => new(&Finish);
 
         [UnmanagedCallersOnly]
-        private static void Initialize(SystemContainer container, World world)
+        private static void Start(SystemContainer container, World world)
         {
         }
 
@@ -35,7 +37,7 @@ namespace Shaders.Systems
         }
 
         [UnmanagedCallersOnly]
-        private static void Finalize(SystemContainer container, World world)
+        private static void Finish(SystemContainer container, World world)
         {
             if (container.World == world)
             {
@@ -123,7 +125,7 @@ namespace Shaders.Systems
             IsShaderRequest request = input.request;
             DataRequest vertex = new(world, shader.GetReference(request.vertex));
             DataRequest fragment = new(world, shader.GetReference(request.fragment));
-            while (!vertex.IsCompliant() || !fragment.IsCompliant())
+            while (!vertex.Is() || !fragment.Is())
             {
                 Trace.WriteLine($"Waiting for shader request `{shader}` to have data available");
                 //todo: fault: if data update performs after shader update, then this may never break, kinda scary
@@ -133,8 +135,8 @@ namespace Shaders.Systems
             }
 
             Trace.WriteLine($"Starting shader compilation for `{shader}`");
-            USpan<byte> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex);
-            USpan<byte> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment);
+            USpan<BinaryData> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex).As<BinaryData>();
+            USpan<BinaryData> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment).As<BinaryData>();
 
             Operation operation = new();
             if (shader.TryGetComponent(out IsShader component))
@@ -143,12 +145,12 @@ namespace Shaders.Systems
                 uint existingFragment = shader.GetReference(component.fragment);
 
                 operation.SelectEntity(existingVertex);
-                operation.ResizeArray<byte>(spvVertex.Length);
+                operation.ResizeArray<BinaryData>(spvVertex.Length);
                 operation.SetArrayElements(0, spvVertex);
                 operation.ClearSelection();
 
                 operation.SelectEntity(existingFragment);
-                operation.ResizeArray<byte>(spvFragment.Length);
+                operation.ResizeArray<BinaryData>(spvFragment.Length);
                 operation.SetArrayElements(0, spvFragment);
                 operation.ClearSelection();
 
@@ -159,11 +161,11 @@ namespace Shaders.Systems
             else
             {
                 operation.CreateEntity();
-                operation.CreateArray<byte>(spvVertex);
+                operation.CreateArray(spvVertex);
                 operation.ClearSelection();
 
                 operation.CreateEntity();
-                operation.CreateArray<byte>(spvFragment);
+                operation.CreateArray(spvFragment);
                 operation.ClearSelection();
 
                 operation.SelectEntity(shader);
@@ -181,15 +183,15 @@ namespace Shaders.Systems
             using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
 
             //fill in shader data
-            shaderCompiler.ReadPushConstantsFromSPV(spvVertex, pushConstants);
-            shaderCompiler.ReadUniformPropertiesFromSPV(spvVertex, uniformProperties, uniformPropertyMembers);
-            shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment, textureProperties);
-            shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex, vertexInputAttributes);
+            shaderCompiler.ReadPushConstantsFromSPV(spvVertex.As<byte>(), pushConstants);
+            shaderCompiler.ReadUniformPropertiesFromSPV(spvVertex.As<byte>(), uniformProperties, uniformPropertyMembers);
+            shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment.As<byte>(), textureProperties);
+            shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex.As<byte>(), vertexInputAttributes);
 
             //make sure lists for shader properties exists
             if (!shader.ContainsArray<ShaderPushConstant>())
             {
-                operation.CreateArray<ShaderPushConstant>(pushConstants.AsSpan());
+                operation.CreateArray(pushConstants.AsSpan());
             }
             else
             {
@@ -199,7 +201,7 @@ namespace Shaders.Systems
 
             if (!shader.ContainsArray<ShaderUniformProperty>())
             {
-                operation.CreateArray<ShaderUniformProperty>(uniformProperties.AsSpan());
+                operation.CreateArray(uniformProperties.AsSpan());
             }
             else
             {
@@ -209,7 +211,7 @@ namespace Shaders.Systems
 
             if (!shader.ContainsArray<ShaderUniformPropertyMember>())
             {
-                operation.CreateArray<ShaderUniformPropertyMember>(uniformPropertyMembers.AsSpan());
+                operation.CreateArray(uniformPropertyMembers.AsSpan());
             }
             else
             {
@@ -219,7 +221,7 @@ namespace Shaders.Systems
 
             if (!shader.ContainsArray<ShaderSamplerProperty>())
             {
-                operation.CreateArray<ShaderSamplerProperty>(textureProperties.AsSpan());
+                operation.CreateArray(textureProperties.AsSpan());
             }
             else
             {
@@ -229,7 +231,7 @@ namespace Shaders.Systems
 
             if (!shader.ContainsArray<ShaderVertexInputAttribute>())
             {
-                operation.CreateArray<ShaderVertexInputAttribute>(vertexInputAttributes.AsSpan());
+                operation.CreateArray(vertexInputAttributes.AsSpan());
             }
             else
             {

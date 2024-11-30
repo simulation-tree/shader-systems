@@ -1,11 +1,14 @@
 ﻿using Data;
+using Data.Components;
 using Data.Systems;
+using Shaders.Components;
 using Shaders.Systems;
+using Simulation.Components;
 using Simulation.Tests;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Unmanaged;
+using Worlds;
 
 namespace Shaders.Tests
 {
@@ -14,6 +17,19 @@ namespace Shaders.Tests
         protected override void SetUp()
         {
             base.SetUp();
+            ComponentType.Register<IsShader>();
+            ComponentType.Register<IsShaderRequest>();
+            ComponentType.Register<IsDataRequest>();
+            ComponentType.Register<IsDataSource>();
+            ComponentType.Register<IsData>();
+            ComponentType.Register<IsProgram>();
+            ComponentType.Register<ProgramAllocation>();
+            ArrayType.Register<BinaryData>();
+            ArrayType.Register<ShaderPushConstant>();
+            ArrayType.Register<ShaderSamplerProperty>();
+            ArrayType.Register<ShaderUniformProperty>();
+            ArrayType.Register<ShaderUniformPropertyMember>();
+            ArrayType.Register<ShaderVertexInputAttribute>();
             Simulator.AddSystem<DataImportSystem>();
             Simulator.AddSystem<ShaderImportSystem>();
         }
@@ -80,14 +96,14 @@ namespace Shaders.Tests
             Assert.That(first.location, Is.EqualTo(0));
             Assert.That(first.binding, Is.EqualTo(0));
             Assert.That(first.offset, Is.EqualTo(0));
-            Assert.That(first.type, Is.EqualTo(RuntimeType.Get<Vector3>()));
+            Assert.That(first.Type, Is.EqualTo(typeof(Vector3)));
 
             ShaderVertexInputAttribute second = shader.VertexAttributes[1];
             Assert.That(second.name.ToString(), Is.EqualTo("inUv"));
             Assert.That(second.location, Is.EqualTo(1));
             Assert.That(second.binding, Is.EqualTo(0));
             Assert.That(second.offset, Is.EqualTo(12));
-            Assert.That(second.type, Is.EqualTo(RuntimeType.Get<Vector2>()));
+            Assert.That(second.Type, Is.EqualTo(typeof(Vector2)));
 
             Assert.That(shader.UniformProperties.Length, Is.EqualTo(1));
             ShaderUniformProperty cameraInfo = shader.UniformProperties[0];
