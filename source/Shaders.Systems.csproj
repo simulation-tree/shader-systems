@@ -15,7 +15,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\Shaders\source\Shaders.csproj" />
+	  <ProjectReference Include="..\..\shaders\source\Shaders.csproj" />
+	  <ProjectReference Include="..\..\collections\source\Collections.csproj" />
 	  <ProjectReference Include="..\..\unmanaged\source\Unmanaged.csproj" />
 	</ItemGroup>
 
