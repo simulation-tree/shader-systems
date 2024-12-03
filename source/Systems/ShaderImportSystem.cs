@@ -137,14 +137,14 @@ namespace Shaders.Systems
                 selectedEntity = operation.SelectEntity(existingVertex);
                 selectedEntity.ResizeArray<BinaryData>(spvVertex.Length);
                 selectedEntity.SetArrayElements(0, spvVertex);
-                operation.ClearSelection();
 
+                operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(existingFragment);
                 selectedEntity.ResizeArray<BinaryData>(spvFragment.Length);
                 selectedEntity.SetArrayElements(0, spvFragment);
-                operation.ClearSelection();
 
                 component.version++;
+                operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(shader);
                 selectedEntity.SetComponent(component);
             }
@@ -152,12 +152,11 @@ namespace Shaders.Systems
             {
                 selectedEntity = operation.CreateEntity();
                 selectedEntity.CreateArray(spvVertex);
-                operation.ClearSelection();
 
                 selectedEntity = operation.CreateEntity();
                 selectedEntity.CreateArray(spvFragment);
-                operation.ClearSelection();
 
+                operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(shader);
                 selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(1); //for vertex
                 selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
