@@ -3,16 +3,14 @@ using Data;
 using Data.Components;
 using Shaders.Components;
 using Simulation;
-using Simulation.Functions;
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Unmanaged;
 using Worlds;
 
 namespace Shaders.Systems
 {
-    public readonly struct ShaderImportSystem : ISystem
+    public readonly partial struct ShaderImportSystem : ISystem
     {
         private readonly ComponentQuery<IsShaderRequest> requestsQuery;
         private readonly ComponentQuery<IsShader> shaderQuery;
@@ -20,29 +18,20 @@ namespace Shaders.Systems
         private readonly Dictionary<Entity, uint> shaderVersions;
         private readonly List<Operation> operations;
 
-        readonly unsafe StartSystem ISystem.Start => new(&Start);
-        readonly unsafe UpdateSystem ISystem.Update => new(&Update);
-        readonly unsafe FinishSystem ISystem.Finish => new(&Finish);
-
-        [UnmanagedCallersOnly]
-        private static void Start(SystemContainer container, World world)
+        void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
         }
 
-        [UnmanagedCallersOnly]
-        private static void Update(SystemContainer container, World world, TimeSpan delta)
+        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
-            ref ShaderImportSystem system = ref container.Read<ShaderImportSystem>();
-            system.Update(world);
+            Update(world);
         }
 
-        [UnmanagedCallersOnly]
-        private static void Finish(SystemContainer container, World world)
+        void ISystem.Finish(in SystemContainer systemContainer, in World world)
         {
-            if (container.World == world)
+            if (systemContainer.World == world)
             {
-                ref ShaderImportSystem system = ref container.Read<ShaderImportSystem>();
-                system.CleanUp();
+                CleanUp();
             }
         }
 
