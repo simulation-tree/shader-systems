@@ -128,41 +128,42 @@ namespace Shaders.Systems
             USpan<BinaryData> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment).As<BinaryData>();
 
             Operation operation = new();
+            Operation.SelectedEntity selectedEntity;
             if (shader.TryGetComponent(out IsShader component))
             {
                 uint existingVertex = shader.GetReference(component.vertex);
                 uint existingFragment = shader.GetReference(component.fragment);
 
-                operation.SelectEntity(existingVertex);
-                operation.ResizeArray<BinaryData>(spvVertex.Length);
-                operation.SetArrayElements(0, spvVertex);
+                selectedEntity = operation.SelectEntity(existingVertex);
+                selectedEntity.ResizeArray<BinaryData>(spvVertex.Length);
+                selectedEntity.SetArrayElements(0, spvVertex);
                 operation.ClearSelection();
 
-                operation.SelectEntity(existingFragment);
-                operation.ResizeArray<BinaryData>(spvFragment.Length);
-                operation.SetArrayElements(0, spvFragment);
+                selectedEntity = operation.SelectEntity(existingFragment);
+                selectedEntity.ResizeArray<BinaryData>(spvFragment.Length);
+                selectedEntity.SetArrayElements(0, spvFragment);
                 operation.ClearSelection();
 
                 component.version++;
-                operation.SelectEntity(shader);
-                operation.SetComponent(component);
+                selectedEntity = operation.SelectEntity(shader);
+                selectedEntity.SetComponent(component);
             }
             else
             {
-                operation.CreateEntity();
-                operation.CreateArray(spvVertex);
+                selectedEntity = operation.CreateEntity();
+                selectedEntity.CreateArray(spvVertex);
                 operation.ClearSelection();
 
-                operation.CreateEntity();
-                operation.CreateArray(spvFragment);
+                selectedEntity = operation.CreateEntity();
+                selectedEntity.CreateArray(spvFragment);
                 operation.ClearSelection();
 
-                operation.SelectEntity(shader);
-                operation.AddReferenceTowardsPreviouslyCreatedEntity(1); //for vertex
-                operation.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
+                selectedEntity = operation.SelectEntity(shader);
+                selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(1); //for vertex
+                selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
 
                 uint referenceCount = shader.GetReferenceCount();
-                operation.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
+                selectedEntity.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
             }
 
             using List<ShaderPushConstant> pushConstants = new();
@@ -180,52 +181,52 @@ namespace Shaders.Systems
             //make sure lists for shader properties exists
             if (!shader.ContainsArray<ShaderPushConstant>())
             {
-                operation.CreateArray(pushConstants.AsSpan());
+                selectedEntity.CreateArray(pushConstants.AsSpan());
             }
             else
             {
-                operation.ResizeArray<ShaderPushConstant>(pushConstants.Count);
-                operation.SetArrayElements(0, pushConstants.AsSpan());
+                selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count);
+                selectedEntity.SetArrayElements(0, pushConstants.AsSpan());
             }
 
             if (!shader.ContainsArray<ShaderUniformProperty>())
             {
-                operation.CreateArray(uniformProperties.AsSpan());
+                selectedEntity.CreateArray(uniformProperties.AsSpan());
             }
             else
             {
-                operation.ResizeArray<ShaderUniformProperty>(uniformProperties.Count);
-                operation.SetArrayElements(0, uniformProperties.AsSpan());
+                selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count);
+                selectedEntity.SetArrayElements(0, uniformProperties.AsSpan());
             }
 
             if (!shader.ContainsArray<ShaderUniformPropertyMember>())
             {
-                operation.CreateArray(uniformPropertyMembers.AsSpan());
+                selectedEntity.CreateArray(uniformPropertyMembers.AsSpan());
             }
             else
             {
-                operation.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count);
-                operation.SetArrayElements(0, uniformPropertyMembers.AsSpan());
+                selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count);
+                selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan());
             }
 
             if (!shader.ContainsArray<ShaderSamplerProperty>())
             {
-                operation.CreateArray(textureProperties.AsSpan());
+                selectedEntity.CreateArray(textureProperties.AsSpan());
             }
             else
             {
-                operation.ResizeArray<ShaderSamplerProperty>(textureProperties.Count);
-                operation.SetArrayElements(0, textureProperties.AsSpan());
+                selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count);
+                selectedEntity.SetArrayElements(0, textureProperties.AsSpan());
             }
 
             if (!shader.ContainsArray<ShaderVertexInputAttribute>())
             {
-                operation.CreateArray(vertexInputAttributes.AsSpan());
+                selectedEntity.CreateArray(vertexInputAttributes.AsSpan());
             }
             else
             {
-                operation.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count);
-                operation.SetArrayElements(0, vertexInputAttributes.AsSpan());
+                selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count);
+                selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan());
             }
 
             operations.Add(operation);
