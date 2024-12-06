@@ -23,15 +23,14 @@ namespace Shaders.Tests
             ComponentType.Register<IsDataSource>();
             ComponentType.Register<IsData>();
             ComponentType.Register<IsProgram>();
-            ComponentType.Register<ProgramAllocation>();
             ArrayType.Register<BinaryData>();
             ArrayType.Register<ShaderPushConstant>();
             ArrayType.Register<ShaderSamplerProperty>();
             ArrayType.Register<ShaderUniformProperty>();
             ArrayType.Register<ShaderUniformPropertyMember>();
             ArrayType.Register<ShaderVertexInputAttribute>();
-            Simulator.AddSystem<DataImportSystem>();
-            Simulator.AddSystem<ShaderImportSystem>();
+            Simulator.AddSystem(new DataImportSystem());
+            Simulator.AddSystem(new ShaderImportSystem());
         }
 
         [Test, CancelAfter(4000)]

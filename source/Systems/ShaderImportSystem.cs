@@ -12,11 +12,16 @@ namespace Shaders.Systems
 {
     public readonly partial struct ShaderImportSystem : ISystem
     {
-        private readonly ComponentQuery<IsShaderRequest> requestsQuery;
-        private readonly ComponentQuery<IsShader> shaderQuery;
         private readonly ShaderCompiler shaderCompiler;
         private readonly Dictionary<Entity, uint> shaderVersions;
         private readonly List<Operation> operations;
+
+        public ShaderImportSystem()
+        {
+            shaderCompiler = new();
+            shaderVersions = new();
+            operations = new();
+        }
 
         void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
@@ -24,54 +29,11 @@ namespace Shaders.Systems
 
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
-            Update(world);
-        }
-
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
-        {
-            if (systemContainer.World == world)
+            ComponentQuery<IsShaderRequest> requestQuery = new(world);
+            foreach (var r in requestQuery)
             {
-                CleanUp();
-            }
-        }
-
-        public ShaderImportSystem()
-        {
-            requestsQuery = new();
-            shaderQuery = new();
-            shaderCompiler = new();
-            shaderVersions = new();
-            operations = new();
-        }
-
-        private void CleanUp()
-        {
-            while (operations.Count > 0)
-            {
-                Operation operation = operations.RemoveAt(0);
-                operation.Dispose();
-            }
-
-            operations.Dispose();
-            shaderCompiler.Dispose();
-            shaderQuery.Dispose();
-            requestsQuery.Dispose();
-            shaderVersions.Dispose();
-        }
-
-        private void Update(World world)
-        {
-            ImportShaders(world);
-            PerformOperations(world);
-        }
-
-        private void ImportShaders(World world)
-        {
-            requestsQuery.Update(world);
-            foreach (var r in requestsQuery)
-            {
-                IsShaderRequest request = r.Component1;
-                bool sourceChanged = false;
+                ref IsShaderRequest request = ref r.component1;
+                bool sourceChanged;
                 Entity shader = new(world, r.entity);
                 if (!shaderVersions.ContainsKey(shader))
                 {
@@ -84,15 +46,34 @@ namespace Shaders.Systems
 
                 if (sourceChanged)
                 {
-                    if (TryImportShaderDataOntoEntity((shader, request)))
+                    if (TryLoadShader(shader, request))
                     {
                         shaderVersions.AddOrSet(shader, request.version);
                     }
                 }
             }
+
+            PerformOperations(world);
         }
 
-        private void PerformOperations(World world)
+        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        {
+        }
+
+        void IDisposable.Dispose()
+        {
+            while (operations.Count > 0)
+            {
+                Operation operation = operations.RemoveAt(0);
+                operation.Dispose();
+            }
+
+            operations.Dispose();
+            shaderCompiler.Dispose();
+            shaderVersions.Dispose();
+        }
+
+        private readonly void PerformOperations(World world)
         {
             while (operations.Count > 0)
             {
@@ -107,11 +88,9 @@ namespace Shaders.Systems
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
         /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
         /// </summary>
-        private bool TryImportShaderDataOntoEntity((Entity shader, IsShaderRequest request) input)
+        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request)
         {
-            Entity shader = input.shader;
             World world = shader.GetWorld();
-            IsShaderRequest request = input.request;
             DataRequest vertex = new(world, shader.GetReference(request.vertex));
             DataRequest fragment = new(world, shader.GetReference(request.fragment));
             while (!vertex.Is() || !fragment.Is())
@@ -129,7 +108,8 @@ namespace Shaders.Systems
 
             Operation operation = new();
             Operation.SelectedEntity selectedEntity;
-            if (shader.TryGetComponent(out IsShader component))
+            ref IsShader component = ref shader.TryGetComponent<IsShader>(out bool contains);
+            if (contains)
             {
                 uint existingVertex = shader.GetReference(component.vertex);
                 uint existingFragment = shader.GetReference(component.fragment);
@@ -143,10 +123,9 @@ namespace Shaders.Systems
                 selectedEntity.ResizeArray<BinaryData>(spvFragment.Length);
                 selectedEntity.SetArrayElements(0, spvFragment);
 
-                component.version++;
                 operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(shader);
-                selectedEntity.SetComponent(component);
+                selectedEntity.SetComponent(new IsShader(component.vertex, component.fragment, component.version + 1));
             }
             else
             {
