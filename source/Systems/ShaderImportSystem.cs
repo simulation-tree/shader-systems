@@ -16,15 +16,22 @@ namespace Shaders.Systems
         private readonly Dictionary<Entity, uint> shaderVersions;
         private readonly List<Operation> operations;
 
-        public ShaderImportSystem()
+        private ShaderImportSystem(ShaderCompiler shaderCompiler, Dictionary<Entity, uint> shaderVersions, List<Operation> operations)
         {
-            shaderCompiler = new();
-            shaderVersions = new();
-            operations = new();
+            this.shaderCompiler = shaderCompiler;
+            this.shaderVersions = shaderVersions;
+            this.operations = operations;
         }
 
         void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
+            if (systemContainer.World == world)
+            {
+                ShaderCompiler shaderCompiler = new();
+                Dictionary<Entity, uint> shaderVersions = new();
+                List<Operation> operations = new();
+                systemContainer.Write(new ShaderImportSystem(shaderCompiler, shaderVersions, operations));
+            }
         }
 
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)

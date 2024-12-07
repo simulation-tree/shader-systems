@@ -29,8 +29,8 @@ namespace Shaders.Tests
             ArrayType.Register<ShaderUniformProperty>();
             ArrayType.Register<ShaderUniformPropertyMember>();
             ArrayType.Register<ShaderVertexInputAttribute>();
-            Simulator.AddSystem(new DataImportSystem());
-            Simulator.AddSystem(new ShaderImportSystem());
+            Simulator.AddSystem<DataImportSystem>();
+            Simulator.AddSystem<ShaderImportSystem>();
         }
 
         [Test, CancelAfter(4000)]
