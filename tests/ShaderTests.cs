@@ -3,7 +3,6 @@ using Data.Components;
 using Data.Systems;
 using Shaders.Components;
 using Shaders.Systems;
-using Simulation.Components;
 using Simulation.Tests;
 using System.Numerics;
 using System.Threading;
@@ -14,23 +13,37 @@ namespace Shaders.Tests
 {
     public class ShaderTests : SimulationTests
     {
+        static ShaderTests()
+        {
+            TypeLayout.Register<IsShader>("IsShader");
+            TypeLayout.Register<IsShaderRequest>("IsShaderRequest");
+            TypeLayout.Register<IsDataRequest>("IsDataRequest");
+            TypeLayout.Register<IsDataSource>("IsDataSource");
+            TypeLayout.Register<IsData>("IsData");
+            TypeLayout.Register<BinaryData>("BinaryData");
+            TypeLayout.Register<ShaderPushConstant>("ShaderPushConstant");
+            TypeLayout.Register<ShaderSamplerProperty>("ShaderSamplerProperty");
+            TypeLayout.Register<ShaderUniformProperty>("ShaderUniformProperty");
+            TypeLayout.Register<ShaderUniformPropertyMember>("ShaderUniformPropertyMember");
+            TypeLayout.Register<ShaderVertexInputAttribute>("ShaderVertexInputAttribute");
+        }
+
         protected override void SetUp()
         {
             base.SetUp();
-            ComponentType.Register<IsShader>();
-            ComponentType.Register<IsShaderRequest>();
-            ComponentType.Register<IsDataRequest>();
-            ComponentType.Register<IsDataSource>();
-            ComponentType.Register<IsData>();
-            ComponentType.Register<IsProgram>();
-            ArrayType.Register<BinaryData>();
-            ArrayType.Register<ShaderPushConstant>();
-            ArrayType.Register<ShaderSamplerProperty>();
-            ArrayType.Register<ShaderUniformProperty>();
-            ArrayType.Register<ShaderUniformPropertyMember>();
-            ArrayType.Register<ShaderVertexInputAttribute>();
-            Simulator.AddSystem<DataImportSystem>();
-            Simulator.AddSystem<ShaderImportSystem>();
+            world.Schema.RegisterComponent<IsShader>();
+            world.Schema.RegisterComponent<IsShaderRequest>();
+            world.Schema.RegisterComponent<IsDataRequest>();
+            world.Schema.RegisterComponent<IsDataSource>();
+            world.Schema.RegisterComponent<IsData>();
+            world.Schema.RegisterArrayElement<BinaryData>();
+            world.Schema.RegisterArrayElement<ShaderPushConstant>();
+            world.Schema.RegisterArrayElement<ShaderSamplerProperty>();
+            world.Schema.RegisterArrayElement<ShaderUniformProperty>();
+            world.Schema.RegisterArrayElement<ShaderUniformPropertyMember>();
+            world.Schema.RegisterArrayElement<ShaderVertexInputAttribute>();
+            simulator.AddSystem<DataImportSystem>();
+            simulator.AddSystem<ShaderImportSystem>();
         }
 
         [Test, CancelAfter(4000)]
@@ -79,13 +92,13 @@ namespace Shaders.Tests
                     uv = inUv;
                 }";
 
-            DataSource vertexFile = new(World, "vertex.glsl");
+            DataSource vertexFile = new(world, "vertex.glsl");
             vertexFile.Write(vertexSource);
 
-            DataSource fragmentFile = new(World, "fragment.glsl");
+            DataSource fragmentFile = new(world, "fragment.glsl");
             fragmentFile.Write(fragmentSource);
 
-            Shader shader = new(World, "vertex.glsl", "fragment.glsl");
+            Shader shader = new(world, "vertex.glsl", "fragment.glsl");
 
             await shader.UntilCompliant(Simulate, cancellation);
 

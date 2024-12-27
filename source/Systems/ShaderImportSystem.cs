@@ -36,6 +36,7 @@ namespace Shaders.Systems
 
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
+            Schema schema = world.Schema;
             ComponentQuery<IsShaderRequest> requestQuery = new(world);
             foreach (var r in requestQuery)
             {
@@ -53,7 +54,7 @@ namespace Shaders.Systems
 
                 if (sourceChanged)
                 {
-                    if (TryLoadShader(shader, request))
+                    if (TryLoadShader(shader, request, schema))
                     {
                         shaderVersions.AddOrSet(shader, request.version);
                     }
@@ -94,7 +95,7 @@ namespace Shaders.Systems
         /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
         /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
         /// </summary>
-        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request)
+        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Schema schema)
         {
             World world = shader.GetWorld();
             DataRequest vertex = new(world, shader.GetReference(request.vertex));
@@ -121,25 +122,25 @@ namespace Shaders.Systems
                 uint existingFragment = shader.GetReference(component.fragment);
 
                 selectedEntity = operation.SelectEntity(existingVertex);
-                selectedEntity.ResizeArray<BinaryData>(spvVertex.Length);
-                selectedEntity.SetArrayElements(0, spvVertex);
+                selectedEntity.ResizeArray<BinaryData>(spvVertex.Length, schema);
+                selectedEntity.SetArrayElements(0, spvVertex, schema);
 
                 operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(existingFragment);
-                selectedEntity.ResizeArray<BinaryData>(spvFragment.Length);
-                selectedEntity.SetArrayElements(0, spvFragment);
+                selectedEntity.ResizeArray<BinaryData>(spvFragment.Length, schema);
+                selectedEntity.SetArrayElements(0, spvFragment, schema);
 
                 operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(shader);
-                selectedEntity.SetComponent(new IsShader(component.vertex, component.fragment, component.version + 1));
+                selectedEntity.SetComponent(new IsShader(component.vertex, component.fragment, component.version + 1), schema);
             }
             else
             {
                 selectedEntity = operation.CreateEntity();
-                selectedEntity.CreateArray(spvVertex);
+                selectedEntity.CreateArray(spvVertex, schema);
 
                 selectedEntity = operation.CreateEntity();
-                selectedEntity.CreateArray(spvFragment);
+                selectedEntity.CreateArray(spvFragment, schema);
 
                 operation.ClearSelection();
                 selectedEntity = operation.SelectEntity(shader);
@@ -147,7 +148,7 @@ namespace Shaders.Systems
                 selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
 
                 uint referenceCount = shader.GetReferenceCount();
-                selectedEntity.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)));
+                selectedEntity.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)), schema);
             }
 
             using List<ShaderPushConstant> pushConstants = new();
@@ -165,52 +166,52 @@ namespace Shaders.Systems
             //make sure lists for shader properties exists
             if (!shader.ContainsArray<ShaderPushConstant>())
             {
-                selectedEntity.CreateArray(pushConstants.AsSpan());
+                selectedEntity.CreateArray(pushConstants.AsSpan(), schema);
             }
             else
             {
-                selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count);
-                selectedEntity.SetArrayElements(0, pushConstants.AsSpan());
+                selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count, schema);
+                selectedEntity.SetArrayElements(0, pushConstants.AsSpan(), schema);
             }
 
             if (!shader.ContainsArray<ShaderUniformProperty>())
             {
-                selectedEntity.CreateArray(uniformProperties.AsSpan());
+                selectedEntity.CreateArray(uniformProperties.AsSpan(), schema);
             }
             else
             {
-                selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count);
-                selectedEntity.SetArrayElements(0, uniformProperties.AsSpan());
+                selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count, schema);
+                selectedEntity.SetArrayElements(0, uniformProperties.AsSpan(), schema);
             }
 
             if (!shader.ContainsArray<ShaderUniformPropertyMember>())
             {
-                selectedEntity.CreateArray(uniformPropertyMembers.AsSpan());
+                selectedEntity.CreateArray(uniformPropertyMembers.AsSpan(), schema);
             }
             else
             {
-                selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count);
-                selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan());
+                selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count, schema);
+                selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan(), schema);
             }
 
             if (!shader.ContainsArray<ShaderSamplerProperty>())
             {
-                selectedEntity.CreateArray(textureProperties.AsSpan());
+                selectedEntity.CreateArray(textureProperties.AsSpan(), schema);
             }
             else
             {
-                selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count);
-                selectedEntity.SetArrayElements(0, textureProperties.AsSpan());
+                selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count, schema);
+                selectedEntity.SetArrayElements(0, textureProperties.AsSpan(), schema);
             }
 
             if (!shader.ContainsArray<ShaderVertexInputAttribute>())
             {
-                selectedEntity.CreateArray(vertexInputAttributes.AsSpan());
+                selectedEntity.CreateArray(vertexInputAttributes.AsSpan(), schema);
             }
             else
             {
-                selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count);
-                selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan());
+                selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count, schema);
+                selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan(), schema);
             }
 
             operations.Add(operation);
