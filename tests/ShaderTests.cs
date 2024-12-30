@@ -15,17 +15,17 @@ namespace Shaders.Tests
     {
         static ShaderTests()
         {
-            TypeLayout.Register<IsShader>("IsShader");
-            TypeLayout.Register<IsShaderRequest>("IsShaderRequest");
-            TypeLayout.Register<IsDataRequest>("IsDataRequest");
-            TypeLayout.Register<IsDataSource>("IsDataSource");
-            TypeLayout.Register<IsData>("IsData");
-            TypeLayout.Register<BinaryData>("BinaryData");
-            TypeLayout.Register<ShaderPushConstant>("ShaderPushConstant");
-            TypeLayout.Register<ShaderSamplerProperty>("ShaderSamplerProperty");
-            TypeLayout.Register<ShaderUniformProperty>("ShaderUniformProperty");
-            TypeLayout.Register<ShaderUniformPropertyMember>("ShaderUniformPropertyMember");
-            TypeLayout.Register<ShaderVertexInputAttribute>("ShaderVertexInputAttribute");
+            TypeLayout.Register<IsShader>();
+            TypeLayout.Register<IsShaderRequest>();
+            TypeLayout.Register<IsDataRequest>();
+            TypeLayout.Register<IsDataSource>();
+            TypeLayout.Register<IsData>();
+            TypeLayout.Register<BinaryData>();
+            TypeLayout.Register<ShaderPushConstant>();
+            TypeLayout.Register<ShaderSamplerProperty>();
+            TypeLayout.Register<ShaderUniformProperty>();
+            TypeLayout.Register<ShaderUniformPropertyMember>();
+            TypeLayout.Register<ShaderVertexInputAttribute>();
         }
 
         protected override void SetUp()
