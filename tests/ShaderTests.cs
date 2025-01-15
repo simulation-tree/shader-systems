@@ -7,6 +7,7 @@ using Simulation.Tests;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Types;
 using Worlds;
 
 namespace Shaders.Tests
