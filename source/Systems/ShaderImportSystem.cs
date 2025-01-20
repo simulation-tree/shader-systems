@@ -14,9 +14,9 @@ namespace Shaders.Systems
     {
         private readonly ShaderCompiler shaderCompiler;
         private readonly Dictionary<Entity, uint> shaderVersions;
-        private readonly List<Operation> operations;
+        private readonly Stack<Operation> operations;
 
-        private ShaderImportSystem(ShaderCompiler shaderCompiler, Dictionary<Entity, uint> shaderVersions, List<Operation> operations)
+        private ShaderImportSystem(ShaderCompiler shaderCompiler, Dictionary<Entity, uint> shaderVersions, Stack<Operation> operations)
         {
             this.shaderCompiler = shaderCompiler;
             this.shaderVersions = shaderVersions;
@@ -29,7 +29,7 @@ namespace Shaders.Systems
             {
                 ShaderCompiler shaderCompiler = new();
                 Dictionary<Entity, uint> shaderVersions = new();
-                List<Operation> operations = new();
+                Stack<Operation> operations = new();
                 systemContainer.Write(new ShaderImportSystem(shaderCompiler, shaderVersions, operations));
             }
         }
@@ -68,9 +68,8 @@ namespace Shaders.Systems
         {
             if (systemContainer.World == world)
             {
-                while (operations.Count > 0)
+                while (operations.TryPop(out Operation operation))
                 {
-                    Operation operation = operations.RemoveAt(0);
                     operation.Dispose();
                 }
 
@@ -82,9 +81,8 @@ namespace Shaders.Systems
 
         private readonly void PerformOperations(World world)
         {
-            while (operations.Count > 0)
+            while (operations.TryPop(out Operation operation))
             {
-                Operation operation = operations.RemoveAt(0);
                 world.Perform(operation);
                 operation.Dispose();
             }
@@ -214,7 +212,7 @@ namespace Shaders.Systems
                 selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan(), schema);
             }
 
-            operations.Add(operation);
+            operations.Push(operation);
             Trace.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
             return true;
         }
