@@ -25,9 +25,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\data-systems\source\Data.Systems.csproj" />
-		<ProjectReference Include="..\..\data\source\Data.csproj" />
+		<ProjectReference Include="..\..\data\core\Data.Core.csproj" />
 		<ProjectReference Include="..\..\Shaders\source\Shaders.csproj" />
-		<ProjectReference Include="..\..\simulation\source\Simulation.csproj" />
+		<ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj" />
 		<ProjectReference Include="..\..\simulation\tests\Simulation.Tests.csproj" />
 		<ProjectReference Include="..\..\unmanaged\source\Unmanaged.csproj" />
 		<ProjectReference Include="..\..\unmanaged\tests\Unmanaged.Tests.csproj" />

@@ -17,7 +17,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\shaders\source\Shaders.csproj" />
 		<ProjectReference Include="..\..\collections\source\Collections.csproj" />
-		<ProjectReference Include="..\..\simulation\source\Simulation.csproj" />
+		<ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj" />
 		<ProjectReference Include="..\..\unmanaged\source\Unmanaged.csproj" />
 		<ProjectReference Include="..\..\simulation\generator\Simulation.Generator.csproj">
 			<OutputItemType>Analyzer</OutputItemType>
