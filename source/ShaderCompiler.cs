@@ -59,7 +59,7 @@ namespace Shaders.Systems
         public readonly USpan<byte> SPVToGLSL(USpan<byte> bytes)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, bytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, bytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -98,7 +98,7 @@ namespace Shaders.Systems
         public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -153,7 +153,7 @@ namespace Shaders.Systems
         public readonly void ReadPushConstantsFromSPV(USpan<byte> vertexBytes, List<ShaderPushConstant> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -204,7 +204,7 @@ namespace Shaders.Systems
         public readonly void ReadVertexInputAttributesFromSPV(USpan<byte> vertexBytes, List<ShaderVertexInputAttribute> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, vertexBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
@@ -240,7 +240,7 @@ namespace Shaders.Systems
         public readonly void ReadTexturePropertiesFromSPV(USpan<byte> fragmentBytes, List<ShaderSamplerProperty> list)
         {
             ThrowIfDisposed();
-            Result result = spvc_context_parse_spirv(spvContext, fragmentBytes.AsSystemSpan(), out spvc_parsed_ir parsedIr);
+            Result result = spvc_context_parse_spirv(spvContext, fragmentBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
