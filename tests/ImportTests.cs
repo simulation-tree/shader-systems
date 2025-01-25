@@ -1,52 +1,13 @@
 ﻿using Data;
-using Data.Components;
-using Data.Systems;
-using Shaders.Components;
-using Shaders.Systems;
-using Simulation.Tests;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Types;
 using Worlds;
 
 namespace Shaders.Tests
 {
-    public class ShaderTests : SimulationTests
+    public class ImportTests : ShaderSystemsTests
     {
-        static ShaderTests()
-        {
-            TypeLayout.Register<IsShader>();
-            TypeLayout.Register<IsShaderRequest>();
-            TypeLayout.Register<IsDataRequest>();
-            TypeLayout.Register<IsDataSource>();
-            TypeLayout.Register<IsData>();
-            TypeLayout.Register<BinaryData>();
-            TypeLayout.Register<ShaderPushConstant>();
-            TypeLayout.Register<ShaderSamplerProperty>();
-            TypeLayout.Register<ShaderUniformProperty>();
-            TypeLayout.Register<ShaderUniformPropertyMember>();
-            TypeLayout.Register<ShaderVertexInputAttribute>();
-        }
-
-        protected override void SetUp()
-        {
-            base.SetUp();
-            world.Schema.RegisterComponent<IsShader>();
-            world.Schema.RegisterComponent<IsShaderRequest>();
-            world.Schema.RegisterComponent<IsDataRequest>();
-            world.Schema.RegisterComponent<IsDataSource>();
-            world.Schema.RegisterComponent<IsData>();
-            world.Schema.RegisterArrayElement<BinaryData>();
-            world.Schema.RegisterArrayElement<ShaderPushConstant>();
-            world.Schema.RegisterArrayElement<ShaderSamplerProperty>();
-            world.Schema.RegisterArrayElement<ShaderUniformProperty>();
-            world.Schema.RegisterArrayElement<ShaderUniformPropertyMember>();
-            world.Schema.RegisterArrayElement<ShaderVertexInputAttribute>();
-            simulator.AddSystem<DataImportSystem>();
-            simulator.AddSystem<ShaderImportSystem>();
-        }
-
         [Test, CancelAfter(4000)]
         public async Task CompileGLSLToSPV(CancellationToken cancellation)
         {
