@@ -10,7 +10,7 @@ namespace Shaders.Tests
     {
         static ShaderSystemsTests()
         {
-            TypeRegistry.Load<Data.TypeBank>();
+            TypeRegistry.Load<Data.Core.TypeBank>();
             TypeRegistry.Load<Shaders.TypeBank>();
         }
 
@@ -24,7 +24,7 @@ namespace Shaders.Tests
         protected override Schema CreateSchema()
         {
             Schema schema = base.CreateSchema();
-            schema.Load<Data.SchemaBank>();
+            schema.Load<Data.Core.SchemaBank>();
             schema.Load<Shaders.SchemaBank>();
             return schema;
         }
