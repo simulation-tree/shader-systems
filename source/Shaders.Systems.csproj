@@ -6,12 +6,19 @@
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<Title>Shaders Systems</Title>
+		<Authors>popcron</Authors>
+		<Company>game-simulations</Company>
+		<RepositoryUrl>https://github.com/game-simulations/shader-systems</RepositoryUrl>
+		<IsAotCompatible>True</IsAotCompatible>
+		<IsTrimmable>True</IsTrimmable>
+		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Vortice.ShaderCompiler" Version="1.8.0" />
-		<PackageReference Include="Vortice.SPIRV" Version="1.0.3" />
-		<PackageReference Include="Vortice.SpirvCross" Version="1.5.1" />
+		<PackageReference Include="Vortice.SPIRV" Version="1.0.4" />
+		<PackageReference Include="Vortice.SpirvCross" Version="1.5.2" />
 	</ItemGroup>
 
 	<ItemGroup>

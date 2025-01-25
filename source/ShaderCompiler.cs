@@ -78,21 +78,18 @@ namespace Shaders.Systems
             spvc_compiler_options_set_bool(options, CompilerOption.GLSLES, SPVC_FALSE);
             spvc_compiler_install_compiler_options(compiler, options);
 
-            sbyte* compileResult = default;
-            result = spvc_compiler_compile(compiler, &compileResult);
+            result = spvc_compiler_compile(compiler, out string? compileResult);
             if (result != Result.Success || compileResult is null)
             {
                 string? error = spvc_context_get_last_error_string(spvContext);
                 throw new Exception($"Failed to compile SPIR-V: {error}");
             }
 
-            uint stringLength = 0;
-            while (compileResult[stringLength] != 0)
+            uint length = (uint)(compileResult.Length * 2);
+            fixed (char* compileResultPtr = compileResult)
             {
-                stringLength++;
+                return new USpan<byte>(compileResultPtr, length);
             }
-
-            return new USpan<byte>(compileResult, stringLength);
         }
 
         public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
@@ -186,8 +183,8 @@ namespace Shaders.Systems
                     {
                         spvc_buffer_range first = range[r];
                         uint memberIndex = first.index;
-                        FixedString memberName = new(new string(spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex)));
-                        ShaderPushConstant pushConstant = new(name, memberName, (byte)first.offset, (byte)first.range);
+                        byte* memberName = spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex);
+                        ShaderPushConstant pushConstant = new(name, new(memberName), (byte)first.offset, (byte)first.range);
                         list.Insert(0, pushConstant);
                     }
                 }
