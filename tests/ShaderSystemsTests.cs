@@ -1,4 +1,5 @@
-﻿using Data.Systems;
+﻿using Data;
+using Data.Systems;
 using Shaders.Systems;
 using Simulation.Tests;
 using Types;
@@ -10,8 +11,8 @@ namespace Shaders.Tests
     {
         static ShaderSystemsTests()
         {
-            TypeRegistry.Load<Data.Core.TypeBank>();
-            TypeRegistry.Load<Shaders.TypeBank>();
+            TypeRegistry.Load<DataTypeBank>();
+            TypeRegistry.Load<ShadersTypeBank>();
         }
 
         protected override void SetUp()
@@ -24,8 +25,8 @@ namespace Shaders.Tests
         protected override Schema CreateSchema()
         {
             Schema schema = base.CreateSchema();
-            schema.Load<Data.Core.SchemaBank>();
-            schema.Load<Shaders.SchemaBank>();
+            schema.Load<DataSchemaBank>();
+            schema.Load<ShadersSchemaBank>();
             return schema;
         }
     }
