@@ -1,6 +1,5 @@
 ﻿using Collections;
-using Data;
-using Data.Components;
+using Data.Messages;
 using Shaders.Components;
 using Simulation;
 using System;
@@ -36,27 +35,36 @@ namespace Shaders.Systems
 
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
-            Schema schema = world.Schema;
             ComponentQuery<IsShaderRequest> requestQuery = new(world);
+            Simulator simulator = systemContainer.simulator;
             foreach (var r in requestQuery)
             {
                 ref IsShaderRequest request = ref r.component1;
-                bool sourceChanged;
                 Entity shader = new(world, r.entity);
-                if (!shaderVersions.ContainsKey(shader))
+                if (request.status == IsShaderRequest.Status.Submitted)
                 {
-                    sourceChanged = true;
-                }
-                else
-                {
-                    sourceChanged = shaderVersions[shader] != request.version;
+                    request.status = IsShaderRequest.Status.Loading;
+                    Trace.WriteLine($"Started searching data for shader `{shader}` with address `{request.address}`");
                 }
 
-                if (sourceChanged)
+                if (request.status == IsShaderRequest.Status.Loading)
                 {
-                    if (TryLoadShader(shader, request, schema))
+                    IsShaderRequest dataRequest = request;
+                    if (TryLoadShader(shader, dataRequest, simulator))
                     {
-                        shaderVersions.AddOrSet(shader, request.version);
+                        Trace.WriteLine($"Shader `{shader}` has been loaded");
+
+                        //todo: being done this way because reference to the request may have shifted
+                        world.SetComponent(r.entity, dataRequest.BecomeLoaded());
+                    }
+                    else
+                    {
+                        request.duration += delta;
+                        if (request.duration >= request.timeout)
+                        {
+                            Trace.TraceError($"Shader `{shader}` could not be loaded");
+                            request.status = IsShaderRequest.Status.NotFound;
+                        }
                     }
                 }
             }
@@ -88,133 +96,116 @@ namespace Shaders.Systems
             }
         }
 
-        /// <summary>
-        /// Updates the shader entity with up to date <see cref="ShaderUniformProperty"/>,
-        /// <see cref="ShaderSamplerProperty"/>, and <see cref="ShaderVertexInputAttribute"/> collections.
-        /// <para>Modifies the `byte` lists to contain SPV bytecode.</para>
-        /// </summary>
-        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Schema schema)
+        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
         {
-            World world = shader.GetWorld();
-            DataRequest vertex = new(world, shader.GetReference(request.vertex));
-            DataRequest fragment = new(world, shader.GetReference(request.fragment));
-            while (!vertex.Is() || !fragment.Is())
+            HandleDataRequest message = new(shader, request.address);
+            if (simulator.TryHandleMessage(ref message))
             {
-                Trace.WriteLine($"Waiting for shader request `{shader}` to have data available");
-                //todo: fault: if data update performs after shader update, then this may never break, kinda scary
-                //Console.WriteLine("hanging shaders");
-                //Thread.Sleep(1);
-                return false;
+                if (message.loaded)
+                {
+                    ShaderType type = request.type;
+                    Schema schema = shader.world.Schema;
+
+                    Trace.WriteLine($"Loading shader data onto entity `{shader}`");
+                    USpan<byte> sourceBytes = message.Bytes;
+                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(sourceBytes, type);
+                    Operation operation = new();
+                    Operation.SelectedEntity selectedEntity = operation.SelectEntity(shader);
+                    if (shader.TryGetComponent(out IsShader component))
+                    {
+                        selectedEntity.SetComponent(component.IncrementVersion(), schema);
+                    }
+                    else
+                    {
+                        selectedEntity.AddComponent(new IsShader(0, type), schema);
+                    }
+
+                    //set the shader bytes
+                    if (shader.ContainsArray<ShaderByte>())
+                    {
+                        selectedEntity.ResizeArray<ShaderByte>(shaderBytes.Length, schema);
+                        selectedEntity.SetArrayElements(0, shaderBytes.As<ShaderByte>(), schema);
+                    }
+                    else
+                    {
+                        selectedEntity.CreateArray(shaderBytes.As<ShaderByte>(), schema);
+                    }
+
+                    //fill metadata
+                    using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
+                    using List<ShaderUniformProperty> uniformProperties = new();
+                    shaderCompiler.ReadUniformPropertiesFromSPV(shaderBytes, uniformProperties, uniformPropertyMembers);
+
+                    if (!shader.ContainsArray<ShaderUniformProperty>())
+                    {
+                        selectedEntity.CreateArray(uniformProperties.AsSpan(), schema);
+                    }
+                    else
+                    {
+                        selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count, schema);
+                        selectedEntity.SetArrayElements(0, uniformProperties.AsSpan(), schema);
+                    }
+
+                    if (!shader.ContainsArray<ShaderUniformPropertyMember>())
+                    {
+                        selectedEntity.CreateArray(uniformPropertyMembers.AsSpan(), schema);
+                    }
+                    else
+                    {
+                        selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count, schema);
+                        selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan(), schema);
+                    }
+
+                    if (type == ShaderType.Vertex)
+                    {
+                        using List<ShaderPushConstant> pushConstants = new();
+                        using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
+                        shaderCompiler.ReadPushConstantsFromSPV(shaderBytes, pushConstants);
+                        shaderCompiler.ReadVertexInputAttributesFromSPV(shaderBytes, vertexInputAttributes);
+
+                        if (!shader.ContainsArray<ShaderPushConstant>())
+                        {
+                            selectedEntity.CreateArray(pushConstants.AsSpan(), schema);
+                        }
+                        else
+                        {
+                            selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count, schema);
+                            selectedEntity.SetArrayElements(0, pushConstants.AsSpan(), schema);
+                        }
+
+                        if (!shader.ContainsArray<ShaderVertexInputAttribute>())
+                        {
+                            selectedEntity.CreateArray(vertexInputAttributes.AsSpan(), schema);
+                        }
+                        else
+                        {
+                            selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count, schema);
+                            selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan(), schema);
+                        }
+                    }
+
+                    if (type == ShaderType.Fragment)
+                    {
+                        using List<ShaderSamplerProperty> textureProperties = new();
+                        shaderCompiler.ReadTexturePropertiesFromSPV(shaderBytes, textureProperties);
+
+                        if (!shader.ContainsArray<ShaderSamplerProperty>())
+                        {
+                            selectedEntity.CreateArray(textureProperties.AsSpan(), schema);
+                        }
+                        else
+                        {
+                            selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count, schema);
+                            selectedEntity.SetArrayElements(0, textureProperties.AsSpan(), schema);
+                        }
+                    }
+
+                    operations.Push(operation);
+                    return true;
+                }
             }
 
-            Trace.WriteLine($"Starting shader compilation for `{shader}`");
-            USpan<BinaryData> spvVertex = shaderCompiler.GLSLToSPV(vertex.Data, ShaderStage.Vertex).As<BinaryData>();
-            USpan<BinaryData> spvFragment = shaderCompiler.GLSLToSPV(fragment.Data, ShaderStage.Fragment).As<BinaryData>();
-
-            Operation operation = new();
-            Operation.SelectedEntity selectedEntity;
-            ref IsShader component = ref shader.TryGetComponent<IsShader>(out bool contains);
-            if (contains)
-            {
-                uint existingVertex = shader.GetReference(component.vertex);
-                uint existingFragment = shader.GetReference(component.fragment);
-
-                selectedEntity = operation.SelectEntity(existingVertex);
-                selectedEntity.ResizeArray<BinaryData>(spvVertex.Length, schema);
-                selectedEntity.SetArrayElements(0, spvVertex, schema);
-
-                operation.ClearSelection();
-                selectedEntity = operation.SelectEntity(existingFragment);
-                selectedEntity.ResizeArray<BinaryData>(spvFragment.Length, schema);
-                selectedEntity.SetArrayElements(0, spvFragment, schema);
-
-                operation.ClearSelection();
-                selectedEntity = operation.SelectEntity(shader);
-                selectedEntity.SetComponent(new IsShader(component.vertex, component.fragment, component.version + 1), schema);
-            }
-            else
-            {
-                selectedEntity = operation.CreateEntity();
-                selectedEntity.CreateArray(spvVertex, schema);
-
-                selectedEntity = operation.CreateEntity();
-                selectedEntity.CreateArray(spvFragment, schema);
-
-                operation.ClearSelection();
-                selectedEntity = operation.SelectEntity(shader);
-                selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(1); //for vertex
-                selectedEntity.AddReferenceTowardsPreviouslyCreatedEntity(0); //for fragment
-
-                uint referenceCount = shader.GetReferenceCount();
-                selectedEntity.AddComponent(new IsShader((rint)(referenceCount + 1), (rint)(referenceCount + 2)), schema);
-            }
-
-            using List<ShaderPushConstant> pushConstants = new();
-            using List<ShaderUniformProperty> uniformProperties = new();
-            using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
-            using List<ShaderSamplerProperty> textureProperties = new();
-            using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
-
-            //fill in shader data
-            shaderCompiler.ReadPushConstantsFromSPV(spvVertex.As<byte>(), pushConstants);
-            shaderCompiler.ReadUniformPropertiesFromSPV(spvVertex.As<byte>(), uniformProperties, uniformPropertyMembers);
-            shaderCompiler.ReadTexturePropertiesFromSPV(spvFragment.As<byte>(), textureProperties);
-            shaderCompiler.ReadVertexInputAttributesFromSPV(spvVertex.As<byte>(), vertexInputAttributes);
-
-            //make sure lists for shader properties exists
-            if (!shader.ContainsArray<ShaderPushConstant>())
-            {
-                selectedEntity.CreateArray(pushConstants.AsSpan(), schema);
-            }
-            else
-            {
-                selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count, schema);
-                selectedEntity.SetArrayElements(0, pushConstants.AsSpan(), schema);
-            }
-
-            if (!shader.ContainsArray<ShaderUniformProperty>())
-            {
-                selectedEntity.CreateArray(uniformProperties.AsSpan(), schema);
-            }
-            else
-            {
-                selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count, schema);
-                selectedEntity.SetArrayElements(0, uniformProperties.AsSpan(), schema);
-            }
-
-            if (!shader.ContainsArray<ShaderUniformPropertyMember>())
-            {
-                selectedEntity.CreateArray(uniformPropertyMembers.AsSpan(), schema);
-            }
-            else
-            {
-                selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count, schema);
-                selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan(), schema);
-            }
-
-            if (!shader.ContainsArray<ShaderSamplerProperty>())
-            {
-                selectedEntity.CreateArray(textureProperties.AsSpan(), schema);
-            }
-            else
-            {
-                selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count, schema);
-                selectedEntity.SetArrayElements(0, textureProperties.AsSpan(), schema);
-            }
-
-            if (!shader.ContainsArray<ShaderVertexInputAttribute>())
-            {
-                selectedEntity.CreateArray(vertexInputAttributes.AsSpan(), schema);
-            }
-            else
-            {
-                selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count, schema);
-                selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan(), schema);
-            }
-
-            operations.Push(operation);
-            Trace.WriteLine($"Shader `{shader}` compiled with vertex `{vertex}` and fragment `{fragment}`");
-            return true;
+            return false;
         }
     }
 }

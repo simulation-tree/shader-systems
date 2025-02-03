@@ -277,38 +277,18 @@ namespace Shaders.Systems
         /// <summary>
         /// Converts the given UTF8 bytes from GLSL to SPIR-V.
         /// </summary>
-        public readonly USpan<byte> GLSLToSPV(USpan<byte> bytes, ShaderStage shaderStage)
+        public readonly USpan<byte> GLSLToSPV(USpan<byte> bytes, ShaderType type)
         {
             ThrowIfDisposed();
+            ThrowIfUnknownType(type);
 
-            ShaderKind bytesFormat = default;
-            if (shaderStage == ShaderStage.Fragment)
-            {
-                bytesFormat = ShaderKind.FragmentShader;
-            }
-            else if (shaderStage == ShaderStage.Vertex)
-            {
-                bytesFormat = ShaderKind.VertexShader;
-            }
-            else if (shaderStage == ShaderStage.Compute)
-            {
-                bytesFormat = ShaderKind.ComputeShader;
-            }
-            else if (shaderStage == ShaderStage.Geometry)
-            {
-                bytesFormat = ShaderKind.GeometryShader;
-            }
-            else
-            {
-                throw new Exception($"Unsupported shader stage {shaderStage}");
-            }
-
+            ShaderKind bytesFormat = (ShaderKind)type;
             string entryPoint = "main";
             using BinaryWriter entryPointWriter = new(4);
-            entryPointWriter.WriteUTF8Text(entryPoint);
+            entryPointWriter.WriteUTF8(entryPoint);
             USpan<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
-            USpan<byte> entryPointBytes = entryPointWriter.GetBytes();
+            USpan<byte> entryPointBytes = entryPointWriter.AsSpan();
             nint result = shaderc_compile_into_spv(pointer, (byte*)bytes.Address, bytes.Length, (int)bytesFormat, (byte*)emptyStringBytes.Address, (byte*)entryPointBytes.Address, options.address);
             uint count = (uint)shaderc_result_get_length(result);
             uint errorCount = (uint)shaderc_result_get_num_errors(result);
@@ -497,7 +477,16 @@ namespace Shaders.Systems
                     break;
             }
 
-            throw new Exception("Unsupported type");
+            throw new InvalidOperationException($"Unsupported value type `{baseType}`");
+        }
+
+        [Conditional("DEBUG")]
+        private static void ThrowIfUnknownType(ShaderType type)
+        {
+            if ((byte)type >= 4)
+            {
+                throw new InvalidOperationException($"Unsupported shader type `{type}`");
+            }
         }
 
         public readonly struct Options : IDisposable

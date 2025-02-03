@@ -2,7 +2,6 @@
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Worlds;
 
 namespace Shaders.Tests
 {
@@ -11,7 +10,7 @@ namespace Shaders.Tests
         [Test, CancelAfter(4000)]
         public async Task CompileGLSLToSPV(CancellationToken cancellation)
         {
-            string fragmentSource =
+            const string FragmentSource =
                 @"#version 450
 
                 layout(location = 0) in vec4 fragColor;
@@ -24,7 +23,7 @@ namespace Shaders.Tests
                     outColor = fragColor * texel.a;
                 }";
 
-            string vertexSource =
+            const string VertexSource =
                 @"#version 450
 
                 layout(location = 0) in vec3 inPosition;
@@ -55,56 +54,58 @@ namespace Shaders.Tests
                 }";
 
             DataSource vertexFile = new(world, "vertex.glsl");
-            vertexFile.Write(vertexSource);
+            vertexFile.WriteUTF8(VertexSource);
 
             DataSource fragmentFile = new(world, "fragment.glsl");
-            fragmentFile.Write(fragmentSource);
+            fragmentFile.WriteUTF8(FragmentSource);
 
-            Shader shader = new(world, "vertex.glsl", "fragment.glsl");
+            Shader vertexShader = new(world, "vertex.glsl", ShaderType.Vertex);
+            Shader fragmentShader = new(world, "fragment.glsl", ShaderType.Fragment);
 
-            await shader.UntilCompliant(Simulate, cancellation);
+            await vertexShader.UntilCompliant(Simulate, cancellation);
+            await fragmentShader.UntilCompliant(Simulate, cancellation);
 
-            Assert.That(shader.VertexAttributes.Length, Is.EqualTo(2));
-            ShaderVertexInputAttribute first = shader.VertexAttributes[0];
+            Assert.That(vertexShader.VertexInputAttributes.Length, Is.EqualTo(2));
+            ShaderVertexInputAttribute first = vertexShader.VertexInputAttributes[0];
             Assert.That(first.name.ToString(), Is.EqualTo("inPosition"));
             Assert.That(first.location, Is.EqualTo(0));
             Assert.That(first.binding, Is.EqualTo(0));
             Assert.That(first.offset, Is.EqualTo(0));
             Assert.That(first.Type, Is.EqualTo(typeof(Vector3)));
 
-            ShaderVertexInputAttribute second = shader.VertexAttributes[1];
+            ShaderVertexInputAttribute second = vertexShader.VertexInputAttributes[1];
             Assert.That(second.name.ToString(), Is.EqualTo("inUv"));
             Assert.That(second.location, Is.EqualTo(1));
             Assert.That(second.binding, Is.EqualTo(0));
             Assert.That(second.offset, Is.EqualTo(12));
             Assert.That(second.Type, Is.EqualTo(typeof(Vector2)));
 
-            Assert.That(shader.UniformProperties.Length, Is.EqualTo(1));
-            ShaderUniformProperty cameraInfo = shader.UniformProperties[0];
+            Assert.That(vertexShader.UniformProperties.Length, Is.EqualTo(1));
+            ShaderUniformProperty cameraInfo = vertexShader.UniformProperties[0];
             Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
             Assert.That(cameraInfo.binding, Is.EqualTo(2));
             Assert.That(cameraInfo.set, Is.EqualTo(0));
-            Assert.That(shader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
+            Assert.That(vertexShader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
 
-            ShaderUniformPropertyMember member = shader.GetMember("cameraInfo", 0);
+            ShaderUniformPropertyMember member = vertexShader.GetMember("cameraInfo", 0);
             Assert.That(member.name.ToString(), Is.EqualTo("proj"));
-            member = shader.GetMember("cameraInfo", 1);
+            member = vertexShader.GetMember("cameraInfo", 1);
             Assert.That(member.name.ToString(), Is.EqualTo("view"));
 
-            Assert.That(shader.SamplerProperties.Length, Is.EqualTo(1));
-            ShaderSamplerProperty texture = shader.SamplerProperties[0];
+            Assert.That(fragmentShader.SamplerProperties.Length, Is.EqualTo(1));
+            ShaderSamplerProperty texture = fragmentShader.SamplerProperties[0];
             Assert.That(texture.binding, Is.EqualTo(3));
             Assert.That(texture.set, Is.EqualTo(0));
             Assert.That(texture.name.ToString(), Is.EqualTo("mainTexture"));
 
-            Assert.That(shader.PushConstants.Length, Is.EqualTo(2));
-            ShaderPushConstant entityColor = shader.PushConstants[0];
+            Assert.That(vertexShader.PushConstants.Length, Is.EqualTo(2));
+            ShaderPushConstant entityColor = vertexShader.PushConstants[0];
             Assert.That(entityColor.propertyName.ToString(), Is.EqualTo("entity"));
             Assert.That(entityColor.memberName.ToString(), Is.EqualTo("color"));
             Assert.That(entityColor.size, Is.EqualTo(16));
             Assert.That(entityColor.offset, Is.EqualTo(0));
 
-            ShaderPushConstant entityModel = shader.PushConstants[1];
+            ShaderPushConstant entityModel = vertexShader.PushConstants[1];
             Assert.That(entityModel.propertyName.ToString(), Is.EqualTo("entity"));
             Assert.That(entityModel.memberName.ToString(), Is.EqualTo("model"));
             Assert.That(entityModel.size, Is.EqualTo(64));

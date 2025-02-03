@@ -22,6 +22,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\data\core\Data.Core.csproj" />
 		<ProjectReference Include="..\..\shaders\source\Shaders.csproj" />
 		<ProjectReference Include="..\..\collections\source\Collections.csproj" />
 		<ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj" />
