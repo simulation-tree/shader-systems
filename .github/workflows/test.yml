@@ -69,6 +69,20 @@ jobs:
           repository: game-simulations/data-systems
           token: ${{ secrets.PAT }}
           path: data-systems
+      
+      - name: Checkout `worlds`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: game-simulations/worlds
+          token: ${{ secrets.PAT }}
+          path: worlds
+      
+      - name: Checkout `types`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: game-simulations/types
+          token: ${{ secrets.PAT }}
+          path: types
             
       - name: Setup
         uses: actions/setup-dotnet@v4
