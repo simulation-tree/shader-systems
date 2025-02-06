@@ -35,35 +35,43 @@ namespace Shaders.Systems
 
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
-            ComponentQuery<IsShaderRequest> requestQuery = new(world);
             Simulator simulator = systemContainer.simulator;
-            foreach (var r in requestQuery)
+            ComponentType componentType = world.Schema.GetComponent<IsShaderRequest>();
+            foreach (Chunk chunk in world.Chunks)
             {
-                ref IsShaderRequest request = ref r.component1;
-                Entity shader = new(world, r.entity);
-                if (request.status == IsShaderRequest.Status.Submitted)
+                if (chunk.Definition.Contains(componentType))
                 {
-                    request.status = IsShaderRequest.Status.Loading;
-                    Trace.WriteLine($"Started searching data for shader `{shader}` with address `{request.address}`");
-                }
-
-                if (request.status == IsShaderRequest.Status.Loading)
-                {
-                    IsShaderRequest dataRequest = request;
-                    if (TryLoadShader(shader, dataRequest, simulator))
+                    USpan<uint> entities = chunk.Entities;
+                    USpan<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
+                    for (uint i = 0; i < entities.Length; i++)
                     {
-                        Trace.WriteLine($"Shader `{shader}` has been loaded");
-
-                        //todo: being done this way because reference to the request may have shifted
-                        world.SetComponent(r.entity, dataRequest.BecomeLoaded());
-                    }
-                    else
-                    {
-                        request.duration += delta;
-                        if (request.duration >= request.timeout)
+                        ref IsShaderRequest request = ref components[i];
+                        Entity shader = new(world, entities[i]);
+                        if (request.status == IsShaderRequest.Status.Submitted)
                         {
-                            Trace.TraceError($"Shader `{shader}` could not be loaded");
-                            request.status = IsShaderRequest.Status.NotFound;
+                            request.status = IsShaderRequest.Status.Loading;
+                            Trace.WriteLine($"Started searching data for shader `{shader}` with address `{request.address}`");
+                        }
+
+                        if (request.status == IsShaderRequest.Status.Loading)
+                        {
+                            IsShaderRequest dataRequest = request;
+                            if (TryLoadShader(shader, dataRequest, simulator))
+                            {
+                                Trace.WriteLine($"Shader `{shader}` has been loaded");
+
+                                //todo: being done this way because reference to the request may have shifted
+                                shader.SetComponent(dataRequest.BecomeLoaded());
+                            }
+                            else
+                            {
+                                request.duration += delta;
+                                if (request.duration >= request.timeout)
+                                {
+                                    Trace.TraceError($"Shader `{shader}` could not be loaded");
+                                    request.status = IsShaderRequest.Status.NotFound;
+                                }
+                            }
                         }
                     }
                 }
