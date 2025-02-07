@@ -106,7 +106,7 @@ namespace Shaders.Systems
 
         private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
         {
-            LoadData message = new(shader, request.address);
+            LoadData message = new(shader.world, request.address);
             if (simulator.TryHandleMessage(ref message))
             {
                 if (message.IsLoaded)
