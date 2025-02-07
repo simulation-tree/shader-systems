@@ -99,7 +99,7 @@ namespace Shaders.Systems
         {
             while (operations.TryPop(out Operation operation))
             {
-                world.Perform(operation);
+                operation.Perform(world);
                 operation.Dispose();
             }
         }
@@ -112,100 +112,37 @@ namespace Shaders.Systems
                 if (message.loaded)
                 {
                     ShaderType type = request.type;
-                    Schema schema = shader.world.Schema;
 
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
                     USpan<byte> sourceBytes = message.Bytes;
                     USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(sourceBytes, type);
                     Operation operation = new();
-                    Operation.SelectedEntity selectedEntity = operation.SelectEntity(shader);
-                    if (shader.TryGetComponent(out IsShader component))
-                    {
-                        selectedEntity.SetComponent(component.IncrementVersion(), schema);
-                    }
-                    else
-                    {
-                        selectedEntity.AddComponent(new IsShader(0, type), schema);
-                    }
-
-                    //set the shader bytes
-                    if (shader.ContainsArray<ShaderByte>())
-                    {
-                        selectedEntity.ResizeArray<ShaderByte>(shaderBytes.Length, schema);
-                        selectedEntity.SetArrayElements(0, shaderBytes.As<ShaderByte>(), schema);
-                    }
-                    else
-                    {
-                        selectedEntity.CreateArray(shaderBytes.As<ShaderByte>(), schema);
-                    }
+                    operation.SelectEntity(shader);
+                    shader.TryGetComponent(out IsShader component);
+                    operation.AddOrSetComponent(new IsShader(component.version + 1, type));
+                    operation.CreateOrSetArray(shaderBytes.As<ShaderByte>());
 
                     //fill metadata
                     using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
                     using List<ShaderUniformProperty> uniformProperties = new();
                     shaderCompiler.ReadUniformPropertiesFromSPV(shaderBytes, uniformProperties, uniformPropertyMembers);
-
-                    if (!shader.ContainsArray<ShaderUniformProperty>())
-                    {
-                        selectedEntity.CreateArray(uniformProperties.AsSpan(), schema);
-                    }
-                    else
-                    {
-                        selectedEntity.ResizeArray<ShaderUniformProperty>(uniformProperties.Count, schema);
-                        selectedEntity.SetArrayElements(0, uniformProperties.AsSpan(), schema);
-                    }
-
-                    if (!shader.ContainsArray<ShaderUniformPropertyMember>())
-                    {
-                        selectedEntity.CreateArray(uniformPropertyMembers.AsSpan(), schema);
-                    }
-                    else
-                    {
-                        selectedEntity.ResizeArray<ShaderUniformPropertyMember>(uniformPropertyMembers.Count, schema);
-                        selectedEntity.SetArrayElements(0, uniformPropertyMembers.AsSpan(), schema);
-                    }
-
+                    operation.CreateOrSetArray(uniformProperties.AsSpan());
+                    operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
                     if (type == ShaderType.Vertex)
                     {
                         using List<ShaderPushConstant> pushConstants = new();
                         using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
                         shaderCompiler.ReadPushConstantsFromSPV(shaderBytes, pushConstants);
                         shaderCompiler.ReadVertexInputAttributesFromSPV(shaderBytes, vertexInputAttributes);
-
-                        if (!shader.ContainsArray<ShaderPushConstant>())
-                        {
-                            selectedEntity.CreateArray(pushConstants.AsSpan(), schema);
-                        }
-                        else
-                        {
-                            selectedEntity.ResizeArray<ShaderPushConstant>(pushConstants.Count, schema);
-                            selectedEntity.SetArrayElements(0, pushConstants.AsSpan(), schema);
-                        }
-
-                        if (!shader.ContainsArray<ShaderVertexInputAttribute>())
-                        {
-                            selectedEntity.CreateArray(vertexInputAttributes.AsSpan(), schema);
-                        }
-                        else
-                        {
-                            selectedEntity.ResizeArray<ShaderVertexInputAttribute>(vertexInputAttributes.Count, schema);
-                            selectedEntity.SetArrayElements(0, vertexInputAttributes.AsSpan(), schema);
-                        }
+                        operation.CreateOrSetArray(pushConstants.AsSpan());
+                        operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
                     }
 
                     if (type == ShaderType.Fragment)
                     {
                         using List<ShaderSamplerProperty> textureProperties = new();
                         shaderCompiler.ReadTexturePropertiesFromSPV(shaderBytes, textureProperties);
-
-                        if (!shader.ContainsArray<ShaderSamplerProperty>())
-                        {
-                            selectedEntity.CreateArray(textureProperties.AsSpan(), schema);
-                        }
-                        else
-                        {
-                            selectedEntity.ResizeArray<ShaderSamplerProperty>(textureProperties.Count, schema);
-                            selectedEntity.SetArrayElements(0, textureProperties.AsSpan(), schema);
-                        }
+                        operation.CreateOrSetArray(textureProperties.AsSpan());
                     }
 
                     operations.Push(operation);
