@@ -106,16 +106,18 @@ namespace Shaders.Systems
 
         private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
         {
-            HandleDataRequest message = new(shader, request.address);
+            LoadData message = new(shader, request.address);
             if (simulator.TryHandleMessage(ref message))
             {
-                if (message.loaded)
+                if (message.IsLoaded)
                 {
                     ShaderType type = request.type;
 
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
-                    USpan<byte> sourceBytes = message.Bytes;
-                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(sourceBytes, type);
+                    USpan<byte> loadedBytes = message.Bytes;
+                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, type);
+                    message.Dispose();
+
                     Operation operation = new();
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
