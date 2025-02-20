@@ -29,7 +29,7 @@
 		<ProjectReference Include="..\..\shaders\source\Shaders.csproj" />
 		<ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj" />
 		<ProjectReference Include="..\..\simulation\tests\Simulation.Tests.csproj" />
-		<ProjectReference Include="..\..\unmanaged\source\Unmanaged.csproj" />
+		<ProjectReference Include="..\..\unmanaged\core\Unmanaged.Core.csproj" />
 		<ProjectReference Include="..\..\unmanaged\tests\Unmanaged.Tests.csproj" />
 		<ProjectReference Include="..\source\Shaders.Systems.csproj" />
 		<ProjectReference Include="..\..\simulation\generator\Simulation.Generator.csproj">
