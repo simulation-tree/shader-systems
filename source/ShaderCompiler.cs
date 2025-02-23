@@ -282,14 +282,14 @@ namespace Shaders.Systems
             ThrowIfDisposed();
             ThrowIfUnknownType(type);
 
-            ShaderKind bytesFormat = (ShaderKind)type;
+            ShaderKind bytesFormat = (ShaderKind)(type - 1);
             string entryPoint = "main";
-            using BinaryWriter entryPointWriter = new(4);
+            using ByteWriter entryPointWriter = new(4);
             entryPointWriter.WriteUTF8(entryPoint);
             USpan<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
             USpan<byte> entryPointBytes = entryPointWriter.AsSpan();
-            nint result = shaderc_compile_into_spv(pointer, (byte*)bytes.Address, bytes.Length, (int)bytesFormat, (byte*)emptyStringBytes.Address, (byte*)entryPointBytes.Address, options.address);
+            nint result = shaderc_compile_into_spv(pointer, bytes.Pointer, bytes.Length, (int)bytesFormat, (byte*)emptyStringBytes.Address, (byte*)entryPointBytes.Address, options.address);
             uint count = (uint)shaderc_result_get_length(result);
             uint errorCount = (uint)shaderc_result_get_num_errors(result);
             if (errorCount > 0)
