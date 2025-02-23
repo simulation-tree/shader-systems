@@ -106,22 +106,22 @@ namespace Shaders.Systems
 
         private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
         {
+            ThrowIfUnknownShaderType(request.type);
+
             LoadData message = new(shader.world, request.address);
             if (simulator.TryHandleMessage(ref message) != default)
             {
                 if (message.IsLoaded)
                 {
-                    ShaderType type = request.type;
-
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
                     USpan<byte> loadedBytes = message.Bytes;
-                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, type);
+                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, request.type);
                     message.Dispose();
 
                     Operation operation = new();
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
-                    operation.AddOrSetComponent(new IsShader(component.version + 1, type));
+                    operation.AddOrSetComponent(component.IncrementVersion());
                     operation.CreateOrSetArray(shaderBytes.As<ShaderByte>());
 
                     //fill metadata
@@ -130,7 +130,7 @@ namespace Shaders.Systems
                     shaderCompiler.ReadUniformPropertiesFromSPV(shaderBytes, uniformProperties, uniformPropertyMembers);
                     operation.CreateOrSetArray(uniformProperties.AsSpan());
                     operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
-                    if (type == ShaderType.Vertex)
+                    if (request.type == ShaderType.Vertex)
                     {
                         using List<ShaderPushConstant> pushConstants = new();
                         using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
@@ -140,7 +140,7 @@ namespace Shaders.Systems
                         operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
                     }
 
-                    if (type == ShaderType.Fragment)
+                    if (request.type == ShaderType.Fragment)
                     {
                         using List<ShaderSamplerProperty> textureProperties = new();
                         shaderCompiler.ReadTexturePropertiesFromSPV(shaderBytes, textureProperties);
@@ -153,6 +153,15 @@ namespace Shaders.Systems
             }
 
             return false;
+        }
+
+        [Conditional("DEBUG")]
+        private static void ThrowIfUnknownShaderType(ShaderType type)
+        {
+            if (type == ShaderType.Unknown || type > ShaderType.Geometry)
+            {
+                throw new NotSupportedException($"Unknown shader type `{type}`");
+            }
         }
     }
 }
