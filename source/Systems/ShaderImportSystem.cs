@@ -36,10 +36,10 @@ namespace Shaders.Systems
         void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
         {
             Simulator simulator = systemContainer.simulator;
-            ComponentType componentType = world.Schema.GetComponent<IsShaderRequest>();
+            ComponentType componentType = world.Schema.GetComponentType<IsShaderRequest>();
             foreach (Chunk chunk in world.Chunks)
             {
-                if (chunk.Definition.Contains(componentType))
+                if (chunk.Definition.ContainsComponent(componentType))
                 {
                     USpan<uint> entities = chunk.Entities;
                     USpan<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
