@@ -114,5 +114,56 @@ namespace Shaders.Tests
             //manually disposed instead of `using`, otherwise the teardown
             //will throw too early
         }
+
+        [Test, CancelAfter(4000)]
+        public async Task ImportInstancedShader(CancellationToken cancellation)
+        {
+            const string VertexSource =
+                @"#version 450 core
+                layout (location = 0) in vec2 aPos;
+                layout (location = 1) in vec3 aColor;
+
+                layout (binding = 2) readonly buffer InstanceData {
+                    vec2 offsets[];
+                } instanceData;
+
+                layout(location = 0) out vec3 fColor;
+                
+                out gl_PerVertex 
+                {
+                    vec4 gl_Position;   
+                };
+
+                void main()
+                {
+                    vec2 offset = instanceData.offsets[int(gl_InstanceIndex)];
+                    gl_Position = vec4(aPos + offset, 0.0, 1.0);
+                    fColor = aColor;
+                }";
+
+            DataSource vertexFile = new(world, "vertex.glsl");
+            vertexFile.WriteUTF8(VertexSource);
+
+            Shader vertexShader = new(world, "vertex.glsl", ShaderType.Vertex);
+
+            await vertexShader.UntilCompliant(Simulate, cancellation);
+
+            Assert.That(vertexShader.IsInstanced, Is.True);
+
+            Assert.That(vertexShader.VertexInputAttributes.Length, Is.EqualTo(2));
+            ShaderVertexInputAttribute first = vertexShader.VertexInputAttributes[0];
+            Assert.That(first.name.ToString(), Is.EqualTo("aPos"));
+            Assert.That(first.location, Is.EqualTo(0));
+            Assert.That(first.binding, Is.EqualTo(0));
+            Assert.That(first.offset, Is.EqualTo(0));
+            Assert.That(first.Type, Is.EqualTo(typeof(Vector2)));
+
+            ShaderVertexInputAttribute second = vertexShader.VertexInputAttributes[1];
+            Assert.That(second.name.ToString(), Is.EqualTo("aColor"));
+            Assert.That(second.location, Is.EqualTo(1));
+            Assert.That(second.binding, Is.EqualTo(0));
+            Assert.That(second.offset, Is.EqualTo(8));
+            Assert.That(second.Type, Is.EqualTo(typeof(Vector3)));
+        }
     }
 }

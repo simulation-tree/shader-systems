@@ -4,6 +4,7 @@ using Shaders.Components;
 using Simulation;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Unmanaged;
 using Worlds;
 
@@ -115,13 +116,19 @@ namespace Shaders.Systems
                 {
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
                     USpan<byte> loadedBytes = message.Bytes;
+                    ShaderFlags flags = default;
+                    if (IsShaderInstanced(loadedBytes))
+                    {
+                        flags |= ShaderFlags.Instanced;
+                    }
+
                     USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, request.type);
                     message.Dispose();
 
                     Operation operation = new();
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
-                    operation.AddOrSetComponent(component.IncrementVersion());
+                    operation.AddOrSetComponent(component.IncrementVersion(flags));
                     operation.CreateOrSetArray(shaderBytes.As<ShaderByte>());
 
                     //fill metadata
@@ -150,6 +157,24 @@ namespace Shaders.Systems
                     operations.Push(operation);
                     return true;
                 }
+            }
+
+            return false;
+        }
+
+        [SkipLocalsInit]
+        private static bool IsShaderInstanced(USpan<byte> bytes)
+        {
+            const string InstanceIndex = "gl_InstanceIndex";
+            const string InstanceID = "gl_InstanceID";
+
+            USpan<char> textBuffer = stackalloc char[(int)bytes.Length * 2];
+            uint readLength = bytes.GetUTF8Characters(0, bytes.Length, textBuffer);
+            textBuffer = textBuffer.GetSpan(readLength);
+
+            if (textBuffer.Contains(InstanceIndex.AsSpan()) || textBuffer.Contains(InstanceID.AsSpan()))
+            {
+                return true;
             }
 
             return false;
