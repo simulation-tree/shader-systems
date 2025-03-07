@@ -154,7 +154,7 @@ namespace Shaders.Systems
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
                 //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
                 //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset);
-                FixedString nameText = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
+                ASCIIText256 nameText = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.Struct)
@@ -168,7 +168,7 @@ namespace Shaders.Systems
                         spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                         uint vectorSize = spvc_type_get_vector_size(memberType);
                         (TypeLayout runtimeType, byte typeSize) = GetRuntimeType(memberType, vectorSize);
-                        members.Add(new(nameText, runtimeType, typeSize, new FixedString(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
+                        members.Add(new(nameText, runtimeType, typeSize, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
                         size += typeSize;
                     }
 
