@@ -8,8 +8,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Title>Shaders Systems</Title>
         <Authors>popcron</Authors>
-        <Company>game-simulations</Company>
-        <RepositoryUrl>https://github.com/game-simulations/shader-systems</RepositoryUrl>
+        <Company>simulation-tree</Company>
+        <RepositoryUrl>https://github.com/simulation-tree/shader-systems</RepositoryUrl>
         <IsAotCompatible>True</IsAotCompatible>
         <IsTrimmable>True</IsTrimmable>
         <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
