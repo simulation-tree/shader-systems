@@ -5,7 +5,6 @@ using Simulation;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Unmanaged;
 using Worlds;
 
 namespace Shaders.Systems
@@ -42,9 +41,9 @@ namespace Shaders.Systems
             {
                 if (chunk.Definition.ContainsComponent(componentType))
                 {
-                    USpan<uint> entities = chunk.Entities;
-                    USpan<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
-                    for (uint i = 0; i < entities.Length; i++)
+                    ReadOnlySpan<uint> entities = chunk.Entities;
+                    Span<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
+                    for (int i = 0; i < entities.Length; i++)
                     {
                         ref IsShaderRequest request = ref components[i];
                         Entity shader = new(world, entities[i]);
@@ -115,21 +114,21 @@ namespace Shaders.Systems
                 if (message.IsLoaded)
                 {
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
-                    USpan<byte> loadedBytes = message.Bytes;
+                    Span<byte> loadedBytes = message.Bytes;
                     ShaderFlags flags = default;
                     if (IsShaderInstanced(loadedBytes))
                     {
                         flags |= ShaderFlags.Instanced;
                     }
 
-                    USpan<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, request.type);
+                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, request.type);
                     message.Dispose();
 
                     Operation operation = new();
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
                     operation.AddOrSetComponent(component.IncrementVersion(flags));
-                    operation.CreateOrSetArray(shaderBytes.As<ShaderByte>());
+                    operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
 
                     //fill metadata
                     using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
@@ -163,16 +162,16 @@ namespace Shaders.Systems
         }
 
         [SkipLocalsInit]
-        private static bool IsShaderInstanced(USpan<byte> bytes)
+        private static bool IsShaderInstanced(ReadOnlySpan<byte> bytes)
         {
             const string InstanceIndex = "gl_InstanceIndex";
             const string InstanceID = "gl_InstanceID";
 
-            USpan<char> textBuffer = stackalloc char[(int)bytes.Length * 2];
-            uint readLength = bytes.GetUTF8Characters(0, bytes.Length, textBuffer);
-            textBuffer = textBuffer.GetSpan(readLength);
+            Span<char> textBuffer = stackalloc char[bytes.Length * 2];
+            int readLength = bytes.GetUTF8Characters(0, bytes.Length, textBuffer);
+            textBuffer = textBuffer.Slice(0, readLength);
 
-            if (textBuffer.Contains(InstanceIndex.AsSpan()) || textBuffer.Contains(InstanceID.AsSpan()))
+            if (textBuffer.IndexOf(InstanceIndex.AsSpan()) != -1 || textBuffer.IndexOf(InstanceID.AsSpan()) != -1)
             {
                 return true;
             }

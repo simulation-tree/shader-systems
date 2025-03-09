@@ -91,7 +91,7 @@ namespace Shaders.Systems
             valid = false;
         }
 
-        public readonly USpan<byte> SPVToGLSL(USpan<byte> bytes)
+        public readonly Span<byte> SPVToGLSL(ReadOnlySpan<byte> bytes)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, bytes, out spvc_parsed_ir parsedIr);
@@ -120,16 +120,16 @@ namespace Shaders.Systems
                 throw new Exception($"Failed to compile SPIR-V: {error}");
             }
 
-            uint length = (uint)(compileResult.Length * 2);
             fixed (char* compileResultPtr = compileResult)
             {
-                return new USpan<byte>(compileResultPtr, length);
+                return new(compileResultPtr, compileResult.Length * 2);
             }
         }
 
-        public readonly void ReadUniformPropertiesFromSPV(USpan<byte> vertexBytes, List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
+        public readonly void ReadUniformPropertiesFromSPV(ReadOnlySpan<byte> vertexBytes, List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
         {
             ThrowIfDisposed();
+
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
@@ -146,8 +146,8 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
-            uint startIndex = list.Count;
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            int startIndex = list.Count;
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
@@ -182,9 +182,10 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadPushConstantsFromSPV(USpan<byte> vertexBytes, List<ShaderPushConstant> list)
+        public readonly void ReadPushConstantsFromSPV(ReadOnlySpan<byte> vertexBytes, List<ShaderPushConstant> list)
         {
             ThrowIfDisposed();
+
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
@@ -201,7 +202,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.PushConstant, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             spvc_buffer_range** ranges = stackalloc spvc_buffer_range*[16];
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
@@ -233,7 +234,7 @@ namespace Shaders.Systems
         /// <summary>
         /// Reads all vertex input attributes from the given SPIR-V bytes.
         /// </summary>
-        public readonly void ReadVertexInputAttributesFromSPV(USpan<byte> vertexBytes, List<ShaderVertexInputAttribute> list)
+        public readonly void ReadVertexInputAttributesFromSPV(ReadOnlySpan<byte> vertexBytes, List<ShaderVertexInputAttribute> list)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, vertexBytes, out spvc_parsed_ir parsedIr);
@@ -252,7 +253,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.StageInput, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             byte offset = 0;
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
@@ -269,7 +270,7 @@ namespace Shaders.Systems
             }
         }
 
-        public readonly void ReadTexturePropertiesFromSPV(USpan<byte> fragmentBytes, List<ShaderSamplerProperty> list)
+        public readonly void ReadTexturePropertiesFromSPV(ReadOnlySpan<byte> fragmentBytes, List<ShaderSamplerProperty> list)
         {
             ThrowIfDisposed();
             Result result = spvc_context_parse_spirv(spvContext, fragmentBytes, out spvc_parsed_ir parsedIr);
@@ -288,7 +289,7 @@ namespace Shaders.Systems
 
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.SampledImage, out spvc_reflected_resource* resourceList, out nuint resourceCount);
-            USpan<spvc_reflected_resource> resourcesSpan = new(resourceList, (uint)resourceCount);
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
@@ -312,7 +313,7 @@ namespace Shaders.Systems
         /// <summary>
         /// Converts the given UTF8 bytes from GLSL to SPIR-V.
         /// </summary>
-        public readonly USpan<byte> GLSLToSPV(USpan<byte> bytes, ShaderType type)
+        public readonly Span<byte> GLSLToSPV(ReadOnlySpan<byte> bytes, ShaderType type)
         {
             ThrowIfDisposed();
             ThrowIfUnknownType(type);
@@ -321,11 +322,11 @@ namespace Shaders.Systems
             string entryPoint = "main";
             using ByteWriter entryPointWriter = new(4);
             entryPointWriter.WriteUTF8(entryPoint);
-            USpan<byte> emptyStringBytes = stackalloc byte[1];
+            Span<byte> emptyStringBytes = stackalloc byte[1];
             emptyStringBytes[0] = default;
-            USpan<byte> entryPointBytes = entryPointWriter.AsSpan();
-            nint result = shaderc_compile_into_spv(pointer, bytes.Pointer, bytes.Length, (int)bytesFormat, (byte*)emptyStringBytes.Address, (byte*)entryPointBytes.Address, options.address);
-            uint count = (uint)shaderc_result_get_length(result);
+            Span<byte> entryPointBytes = entryPointWriter.AsSpan();
+            nint result = shaderc_compile_into_spv(pointer, bytes.GetPointer(), (uint)bytes.Length, (int)bytesFormat, emptyStringBytes.GetPointer(), entryPointBytes.GetPointer(), options.address);
+            int count = (int)shaderc_result_get_length(result);
             uint errorCount = (uint)shaderc_result_get_num_errors(result);
             if (errorCount > 0)
             {
@@ -341,7 +342,7 @@ namespace Shaders.Systems
                 throw new Exception($"Failed to compile shader: {status}");
             }
 
-            return new USpan<byte>(shaderc_result_get_bytes(result), count);
+            return new(shaderc_result_get_bytes(result), count);
         }
 
         private static (TypeLayout type, byte size) GetRuntimeType(spvc_type type, uint vectorSize)
