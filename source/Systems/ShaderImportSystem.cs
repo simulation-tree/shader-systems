@@ -111,17 +111,16 @@ namespace Shaders.Systems
             LoadData message = new(shader.world, request.address);
             if (simulator.TryHandleMessage(ref message) != default)
             {
-                if (message.IsLoaded)
+                if (message.TryGetBytes(out ReadOnlySpan<byte> data))
                 {
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
-                    Span<byte> loadedBytes = message.Bytes;
                     ShaderFlags flags = default;
-                    if (IsShaderInstanced(loadedBytes))
+                    if (IsShaderInstanced(data))
                     {
                         flags |= ShaderFlags.Instanced;
                     }
 
-                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(loadedBytes, request.type);
+                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(data, request.type);
                     message.Dispose();
 
                     Operation operation = new();
