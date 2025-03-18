@@ -18,8 +18,8 @@ namespace Shaders.Tests
         protected override void SetUp()
         {
             base.SetUp();
-            simulator.AddSystem<DataImportSystem>();
-            simulator.AddSystem<ShaderImportSystem>();
+            simulator.AddSystem(new DataImportSystem());
+            simulator.AddSystem(new ShaderImportSystem());
         }
 
         protected override Schema CreateSchema()

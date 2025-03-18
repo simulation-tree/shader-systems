@@ -15,34 +15,38 @@ namespace Shaders.Systems
         private readonly Dictionary<Entity, uint> shaderVersions;
         private readonly Stack<Operation> operations;
 
-        private ShaderImportSystem(ShaderCompiler shaderCompiler, Dictionary<Entity, uint> shaderVersions, Stack<Operation> operations)
+        public ShaderImportSystem()
         {
-            this.shaderCompiler = shaderCompiler;
-            this.shaderVersions = shaderVersions;
-            this.operations = operations;
+            shaderCompiler = new();
+            shaderVersions = new(4);
+            operations = new();
         }
 
-        void ISystem.Start(in SystemContainer systemContainer, in World world)
+        public readonly void Dispose()
         {
-            if (systemContainer.World == world)
+            while (operations.TryPop(out Operation operation))
             {
-                ShaderCompiler shaderCompiler = new();
-                Dictionary<Entity, uint> shaderVersions = new();
-                Stack<Operation> operations = new();
-                systemContainer.Write(new ShaderImportSystem(shaderCompiler, shaderVersions, operations));
+                operation.Dispose();
             }
+
+            operations.Dispose();
+            shaderCompiler.Dispose();
+            shaderVersions.Dispose();
         }
 
-        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
+        void ISystem.Start(in SystemContext context, in World world)
         {
-            Simulator simulator = systemContainer.simulator;
-            ComponentType componentType = world.Schema.GetComponentType<IsShaderRequest>();
+        }
+
+        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
+        {
+            int componentType = world.Schema.GetComponentType<IsShaderRequest>();
             foreach (Chunk chunk in world.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(componentType))
                 {
                     ReadOnlySpan<uint> entities = chunk.Entities;
-                    Span<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
+                    ComponentEnumerator<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
                     for (int i = 0; i < entities.Length; i++)
                     {
                         ref IsShaderRequest request = ref components[i];
@@ -56,7 +60,7 @@ namespace Shaders.Systems
                         if (request.status == IsShaderRequest.Status.Loading)
                         {
                             IsShaderRequest dataRequest = request;
-                            if (TryLoadShader(shader, dataRequest, simulator))
+                            if (TryLoadShader(shader, dataRequest, context))
                             {
                                 Trace.WriteLine($"Shader `{shader}` has been loaded");
 
@@ -80,19 +84,8 @@ namespace Shaders.Systems
             PerformOperations(world);
         }
 
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        void ISystem.Finish(in SystemContext context, in World world)
         {
-            if (systemContainer.World == world)
-            {
-                while (operations.TryPop(out Operation operation))
-                {
-                    operation.Dispose();
-                }
-
-                operations.Dispose();
-                shaderCompiler.Dispose();
-                shaderVersions.Dispose();
-            }
         }
 
         private readonly void PerformOperations(World world)
@@ -104,12 +97,12 @@ namespace Shaders.Systems
             }
         }
 
-        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
+        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, SystemContext context)
         {
             ThrowIfUnknownShaderType(request.type);
 
             LoadData message = new(shader.world, request.address);
-            if (simulator.TryHandleMessage(ref message) != default)
+            if (context.TryHandleMessage(ref message) != default)
             {
                 if (message.TryGetBytes(out ReadOnlySpan<byte> data))
                 {
