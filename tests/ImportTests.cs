@@ -72,14 +72,14 @@ namespace Shaders.Tests
             Assert.That(first.location, Is.EqualTo(0));
             Assert.That(first.binding, Is.EqualTo(0));
             Assert.That(first.offset, Is.EqualTo(0));
-            Assert.That(first.Type, Is.EqualTo(TypeRegistry.Get<Vector3>()));
+            Assert.That(first.Type, Is.EqualTo(TypeRegistry.GetType<Vector3>()));
 
             ShaderVertexInputAttribute second = vertexShader.VertexInputAttributes[1];
             Assert.That(second.name.ToString(), Is.EqualTo("inUv"));
             Assert.That(second.location, Is.EqualTo(1));
             Assert.That(second.binding, Is.EqualTo(0));
             Assert.That(second.offset, Is.EqualTo(12));
-            Assert.That(second.Type, Is.EqualTo(TypeRegistry.Get<Vector2>()));
+            Assert.That(second.Type, Is.EqualTo(TypeRegistry.GetType<Vector2>()));
 
             Assert.That(vertexShader.UniformProperties.Length, Is.EqualTo(1));
             ShaderUniformProperty cameraInfo = vertexShader.UniformProperties[0];
@@ -157,14 +157,14 @@ namespace Shaders.Tests
             Assert.That(first.location, Is.EqualTo(0));
             Assert.That(first.binding, Is.EqualTo(0));
             Assert.That(first.offset, Is.EqualTo(0));
-            Assert.That(first.Type, Is.EqualTo(TypeRegistry.Get<Vector2>()));
+            Assert.That(first.Type, Is.EqualTo(TypeRegistry.GetType<Vector2>()));
 
             ShaderVertexInputAttribute second = vertexShader.VertexInputAttributes[1];
             Assert.That(second.name.ToString(), Is.EqualTo("aColor"));
             Assert.That(second.location, Is.EqualTo(1));
             Assert.That(second.binding, Is.EqualTo(0));
             Assert.That(second.offset, Is.EqualTo(8));
-            Assert.That(second.Type, Is.EqualTo(TypeRegistry.Get<Vector3>()));
+            Assert.That(second.Type, Is.EqualTo(TypeRegistry.GetType<Vector3>()));
         }
     }
 }

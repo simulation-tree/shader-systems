@@ -27,36 +27,36 @@ namespace Shaders.Systems
 
         static ShaderCompiler()
         {
-            TypeRegistry.Register<(Half, Half)>();
-            TypeRegistry.Register<(Half, Half, Half)>();
-            TypeRegistry.Register<(Half, Half, Half, Half)>();
-            TypeRegistry.Register<(double, double)>();
-            TypeRegistry.Register<(double, double, double)>();
-            TypeRegistry.Register<(double, double, double, double)>();
-            TypeRegistry.Register<(byte, byte)>();
-            TypeRegistry.Register<(byte, byte, byte)>();
-            TypeRegistry.Register<(byte, byte, byte, byte)>();
-            TypeRegistry.Register<(sbyte, sbyte)>();
-            TypeRegistry.Register<(sbyte, sbyte, sbyte)>();
-            TypeRegistry.Register<(sbyte, sbyte, sbyte, sbyte)>();
-            TypeRegistry.Register<(short, short)>();
-            TypeRegistry.Register<(short, short, short)>();
-            TypeRegistry.Register<(short, short, short, short)>();
-            TypeRegistry.Register<(ushort, ushort)>();
-            TypeRegistry.Register<(ushort, ushort, ushort)>();
-            TypeRegistry.Register<(ushort, ushort, ushort, ushort)>();
-            TypeRegistry.Register<(int, int)>();
-            TypeRegistry.Register<(int, int, int)>();
-            TypeRegistry.Register<(int, int, int, int)>();
-            TypeRegistry.Register<(uint, uint)>();
-            TypeRegistry.Register<(uint, uint, uint)>();
-            TypeRegistry.Register<(uint, uint, uint, uint)>();
-            TypeRegistry.Register<(long, long)>();
-            TypeRegistry.Register<(long, long, long)>();
-            TypeRegistry.Register<(long, long, long, long)>();
-            TypeRegistry.Register<(ulong, ulong)>();
-            TypeRegistry.Register<(ulong, ulong, ulong)>();
-            TypeRegistry.Register<(ulong, ulong, ulong, ulong)>();
+            TypeRegistry.RegisterType<(Half, Half)>();
+            TypeRegistry.RegisterType<(Half, Half, Half)>();
+            TypeRegistry.RegisterType<(Half, Half, Half, Half)>();
+            TypeRegistry.RegisterType<(double, double)>();
+            TypeRegistry.RegisterType<(double, double, double)>();
+            TypeRegistry.RegisterType<(double, double, double, double)>();
+            TypeRegistry.RegisterType<(byte, byte)>();
+            TypeRegistry.RegisterType<(byte, byte, byte)>();
+            TypeRegistry.RegisterType<(byte, byte, byte, byte)>();
+            TypeRegistry.RegisterType<(sbyte, sbyte)>();
+            TypeRegistry.RegisterType<(sbyte, sbyte, sbyte)>();
+            TypeRegistry.RegisterType<(sbyte, sbyte, sbyte, sbyte)>();
+            TypeRegistry.RegisterType<(short, short)>();
+            TypeRegistry.RegisterType<(short, short, short)>();
+            TypeRegistry.RegisterType<(short, short, short, short)>();
+            TypeRegistry.RegisterType<(ushort, ushort)>();
+            TypeRegistry.RegisterType<(ushort, ushort, ushort)>();
+            TypeRegistry.RegisterType<(ushort, ushort, ushort, ushort)>();
+            TypeRegistry.RegisterType<(int, int)>();
+            TypeRegistry.RegisterType<(int, int, int)>();
+            TypeRegistry.RegisterType<(int, int, int, int)>();
+            TypeRegistry.RegisterType<(uint, uint)>();
+            TypeRegistry.RegisterType<(uint, uint, uint)>();
+            TypeRegistry.RegisterType<(uint, uint, uint, uint)>();
+            TypeRegistry.RegisterType<(long, long)>();
+            TypeRegistry.RegisterType<(long, long, long)>();
+            TypeRegistry.RegisterType<(long, long, long, long)>();
+            TypeRegistry.RegisterType<(ulong, ulong)>();
+            TypeRegistry.RegisterType<(ulong, ulong, ulong)>();
+            TypeRegistry.RegisterType<(ulong, ulong, ulong, ulong)>();
         }
 
         public ShaderCompiler()
@@ -167,7 +167,7 @@ namespace Shaders.Systems
                         uint memberTypeId = spvc_type_get_member_type(type, m);
                         spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                         uint vectorSize = spvc_type_get_vector_size(memberType);
-                        (TypeLayout runtimeType, byte typeSize) = GetRuntimeType(memberType, vectorSize);
+                        (Types.Type runtimeType, byte typeSize) = GetRuntimeType(memberType, vectorSize);
                         members.Add(new(nameText, runtimeType, typeSize, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
                         size += typeSize;
                     }
@@ -263,7 +263,7 @@ namespace Shaders.Systems
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 uint vectorSize = spvc_type_get_vector_size(type);
                 string name = new(spvc_compiler_get_name(compiler, resource.id));
-                (TypeLayout runtimeType, byte size) = GetRuntimeType(type, vectorSize);
+                (Types.Type runtimeType, byte size) = GetRuntimeType(type, vectorSize);
                 ShaderVertexInputAttribute vertexInputAttribute = new(name, location, binding, offset, runtimeType, size);
                 list.Add(vertexInputAttribute);
                 offset += size;
@@ -345,7 +345,7 @@ namespace Shaders.Systems
             return new(shaderc_result_get_bytes(result), count);
         }
 
-        private static (TypeLayout type, byte size) GetRuntimeType(spvc_type type, uint vectorSize)
+        private static (Types.Type type, byte size) GetRuntimeType(spvc_type type, uint vectorSize)
         {
             if (vectorSize == 0)
             {
@@ -359,156 +359,156 @@ namespace Shaders.Systems
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<Half>(), 2);
+                            return (TypeRegistry.GetType<Half>(), 2);
                         case 2:
-                            return (TypeRegistry.Get<(Half, Half)>(), 4);
+                            return (TypeRegistry.GetType<(Half, Half)>(), 4);
                         case 3:
-                            return (TypeRegistry.Get<(Half, Half, Half)>(), 6);
+                            return (TypeRegistry.GetType<(Half, Half, Half)>(), 6);
                         case 4:
-                            return (TypeRegistry.Get<(Half, Half, Half, Half)>(), 8);
+                            return (TypeRegistry.GetType<(Half, Half, Half, Half)>(), 8);
                     }
                     break;
                 case Basetype.Fp32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<float>(), 4);
+                            return (TypeRegistry.GetType<float>(), 4);
                         case 2:
-                            return (TypeRegistry.Get<Vector2>(), 8);
+                            return (TypeRegistry.GetType<Vector2>(), 8);
                         case 3:
-                            return (TypeRegistry.Get<Vector3>(), 12);
+                            return (TypeRegistry.GetType<Vector3>(), 12);
                         case 4:
-                            return (TypeRegistry.Get<Vector4>(), 16);
+                            return (TypeRegistry.GetType<Vector4>(), 16);
                     }
                     break;
                 case Basetype.Fp64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<double>(), 8);
+                            return (TypeRegistry.GetType<double>(), 8);
                         case 2:
-                            return (TypeRegistry.Get<(double, double)>(), 16);
+                            return (TypeRegistry.GetType<(double, double)>(), 16);
                         case 3:
-                            return (TypeRegistry.Get<(double, double, double)>(), 24);
+                            return (TypeRegistry.GetType<(double, double, double)>(), 24);
                         case 4:
-                            return (TypeRegistry.Get<(double, double, double, double)>(), 32);
+                            return (TypeRegistry.GetType<(double, double, double, double)>(), 32);
                     }
                     break;
                 case Basetype.Int8:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<sbyte>(), 8);
+                            return (TypeRegistry.GetType<sbyte>(), 8);
                         case 2:
-                            return (TypeRegistry.Get<(sbyte, sbyte)>(), 16);
+                            return (TypeRegistry.GetType<(sbyte, sbyte)>(), 16);
                         case 3:
-                            return (TypeRegistry.Get<(sbyte, sbyte, sbyte)>(), 24);
+                            return (TypeRegistry.GetType<(sbyte, sbyte, sbyte)>(), 24);
                         case 4:
-                            return (TypeRegistry.Get<(sbyte, sbyte, sbyte, sbyte)>(), 32);
+                            return (TypeRegistry.GetType<(sbyte, sbyte, sbyte, sbyte)>(), 32);
                     }
                     break;
                 case Basetype.Int16:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<short>(), 2);
+                            return (TypeRegistry.GetType<short>(), 2);
                         case 2:
-                            return (TypeRegistry.Get<(short, short)>(), 4);
+                            return (TypeRegistry.GetType<(short, short)>(), 4);
                         case 3:
-                            return (TypeRegistry.Get<(short, short, short)>(), 6);
+                            return (TypeRegistry.GetType<(short, short, short)>(), 6);
                         case 4:
-                            return (TypeRegistry.Get<(short, short, short, short)>(), 8);
+                            return (TypeRegistry.GetType<(short, short, short, short)>(), 8);
                     }
                     break;
                 case Basetype.Int32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<int>(), 4);
+                            return (TypeRegistry.GetType<int>(), 4);
                         case 2:
-                            return (TypeRegistry.Get<(int, int)>(), 8);
+                            return (TypeRegistry.GetType<(int, int)>(), 8);
                         case 3:
-                            return (TypeRegistry.Get<(int, int, int)>(), 12);
+                            return (TypeRegistry.GetType<(int, int, int)>(), 12);
                         case 4:
-                            return (TypeRegistry.Get<(int, int, int, int)>(), 16);
+                            return (TypeRegistry.GetType<(int, int, int, int)>(), 16);
                     }
                     break;
                 case Basetype.Int64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<long>(), 8);
+                            return (TypeRegistry.GetType<long>(), 8);
                         case 2:
-                            return (TypeRegistry.Get<(long, long)>(), 16);
+                            return (TypeRegistry.GetType<(long, long)>(), 16);
                         case 3:
-                            return (TypeRegistry.Get<(long, long, long)>(), 24);
+                            return (TypeRegistry.GetType<(long, long, long)>(), 24);
                         case 4:
-                            return (TypeRegistry.Get<(long, long, long, long)>(), 32);
+                            return (TypeRegistry.GetType<(long, long, long, long)>(), 32);
                     }
                     break;
                 case Basetype.Boolean:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<bool>(), 1);
+                            return (TypeRegistry.GetType<bool>(), 1);
                         case 2:
-                            return (TypeRegistry.Get<(bool, bool)>(), 2);
+                            return (TypeRegistry.GetType<(bool, bool)>(), 2);
                         case 3:
-                            return (TypeRegistry.Get<(bool, bool, bool)>(), 3);
+                            return (TypeRegistry.GetType<(bool, bool, bool)>(), 3);
                         case 4:
-                            return (TypeRegistry.Get<(bool, bool, bool, bool)>(), 4);
+                            return (TypeRegistry.GetType<(bool, bool, bool, bool)>(), 4);
                     }
                     break;
                 case Basetype.Uint8:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<byte>(), 1);
+                            return (TypeRegistry.GetType<byte>(), 1);
                         case 2:
-                            return (TypeRegistry.Get<(byte, byte)>(), 2);
+                            return (TypeRegistry.GetType<(byte, byte)>(), 2);
                         case 3:
-                            return (TypeRegistry.Get<(byte, byte, byte)>(), 3);
+                            return (TypeRegistry.GetType<(byte, byte, byte)>(), 3);
                         case 4:
-                            return (TypeRegistry.Get<(byte, byte, byte, byte)>(), 4);
+                            return (TypeRegistry.GetType<(byte, byte, byte, byte)>(), 4);
                     }
                     break;
                 case Basetype.Uint16:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<ushort>(), 2);
+                            return (TypeRegistry.GetType<ushort>(), 2);
                         case 2:
-                            return (TypeRegistry.Get<(ushort, ushort)>(), 4);
+                            return (TypeRegistry.GetType<(ushort, ushort)>(), 4);
                         case 3:
-                            return (TypeRegistry.Get<(ushort, ushort, ushort)>(), 6);
+                            return (TypeRegistry.GetType<(ushort, ushort, ushort)>(), 6);
                         case 4:
-                            return (TypeRegistry.Get<(ushort, ushort, ushort, ushort)>(), 8);
+                            return (TypeRegistry.GetType<(ushort, ushort, ushort, ushort)>(), 8);
                     }
                     break;
                 case Basetype.Uint32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<uint>(), 4);
+                            return (TypeRegistry.GetType<uint>(), 4);
                         case 2:
-                            return (TypeRegistry.Get<(uint, uint)>(), 8);
+                            return (TypeRegistry.GetType<(uint, uint)>(), 8);
                         case 3:
-                            return (TypeRegistry.Get<(uint, uint, uint)>(), 12);
+                            return (TypeRegistry.GetType<(uint, uint, uint)>(), 12);
                         case 4:
-                            return (TypeRegistry.Get<(uint, uint, uint, uint)>(), 16);
+                            return (TypeRegistry.GetType<(uint, uint, uint, uint)>(), 16);
                     }
                     break;
                 case Basetype.Uint64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (TypeRegistry.Get<ulong>(), 8);
+                            return (TypeRegistry.GetType<ulong>(), 8);
                         case 2:
-                            return (TypeRegistry.Get<(ulong, ulong)>(), 16);
+                            return (TypeRegistry.GetType<(ulong, ulong)>(), 16);
                         case 3:
-                            return (TypeRegistry.Get<(ulong, ulong, ulong)>(), 24);
+                            return (TypeRegistry.GetType<(ulong, ulong, ulong)>(), 24);
                         case 4:
-                            return (TypeRegistry.Get<(ulong, ulong, ulong, ulong)>(), 32);
+                            return (TypeRegistry.GetType<(ulong, ulong, ulong, ulong)>(), 32);
                     }
                     break;
             }
