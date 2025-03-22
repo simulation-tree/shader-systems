@@ -11,8 +11,8 @@ namespace Shaders.Tests
     {
         static ShaderSystemsTests()
         {
-            TypeRegistry.Load<DataTypeBank>();
-            TypeRegistry.Load<ShadersTypeBank>();
+            MetadataRegistry.Load<DataTypeBank>();
+            MetadataRegistry.Load<ShadersTypeBank>();
         }
 
         protected override void SetUp()
