@@ -119,7 +119,8 @@ namespace Shaders.Systems
                     Operation operation = new();
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
-                    operation.AddOrSetComponent(component.IncrementVersion(flags));
+                    component.version++;
+                    operation.AddOrSetComponent(component);
                     operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
 
                     //fill metadata
