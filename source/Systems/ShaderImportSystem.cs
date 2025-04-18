@@ -120,6 +120,7 @@ namespace Shaders.Systems
                     operation.SelectEntity(shader);
                     shader.TryGetComponent(out IsShader component);
                     component.version++;
+                    component.flags = flags;
                     operation.AddOrSetComponent(component);
                     operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
 
