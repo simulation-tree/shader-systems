@@ -167,9 +167,9 @@ namespace Shaders.Systems
                         uint memberTypeId = spvc_type_get_member_type(type, m);
                         spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                         uint vectorSize = spvc_type_get_vector_size(memberType);
-                        (Types.Type runtimeType, byte typeSize) = GetRuntimeType(memberType, vectorSize);
-                        members.Add(new(nameText, runtimeType, typeSize, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
-                        size += typeSize;
+                        TypeMetadata runtimeType = GetRuntimeType(memberType, vectorSize);
+                        members.Add(new(nameText, runtimeType, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
+                        size += runtimeType.Size;
                     }
 
                     ShaderUniformProperty uniformBuffer = new(nameText, (byte)binding, (byte)set, size);
@@ -263,10 +263,10 @@ namespace Shaders.Systems
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 uint vectorSize = spvc_type_get_vector_size(type);
                 string name = new(spvc_compiler_get_name(compiler, resource.id));
-                (Types.Type runtimeType, byte size) = GetRuntimeType(type, vectorSize);
-                ShaderVertexInputAttribute vertexInputAttribute = new(name, location, binding, offset, runtimeType, size);
+                TypeMetadata runtimeType = GetRuntimeType(type, vectorSize);
+                ShaderVertexInputAttribute vertexInputAttribute = new(name, location, binding, offset, runtimeType);
                 list.Add(vertexInputAttribute);
-                offset += size;
+                offset += (byte)runtimeType.Size;
             }
         }
 
@@ -345,7 +345,7 @@ namespace Shaders.Systems
             return new(shaderc_result_get_bytes(result), count);
         }
 
-        private static (Types.Type type, byte size) GetRuntimeType(spvc_type type, uint vectorSize)
+        private static TypeMetadata GetRuntimeType(spvc_type type, uint vectorSize)
         {
             if (vectorSize == 0)
             {
@@ -359,156 +359,156 @@ namespace Shaders.Systems
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<Half>(), 2);
+                            return MetadataRegistry.GetType<Half>();
                         case 2:
-                            return (MetadataRegistry.GetType<(Half, Half)>(), 4);
+                            return MetadataRegistry.GetType<(Half, Half)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(Half, Half, Half)>(), 6);
+                            return MetadataRegistry.GetType<(Half, Half, Half)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(Half, Half, Half, Half)>(), 8);
+                            return MetadataRegistry.GetType<(Half, Half, Half, Half)>();
                     }
                     break;
                 case Basetype.Fp32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<float>(), 4);
+                            return MetadataRegistry.GetType<float>();
                         case 2:
-                            return (MetadataRegistry.GetType<Vector2>(), 8);
+                            return MetadataRegistry.GetType<Vector2>();
                         case 3:
-                            return (MetadataRegistry.GetType<Vector3>(), 12);
+                            return MetadataRegistry.GetType<Vector3>();
                         case 4:
-                            return (MetadataRegistry.GetType<Vector4>(), 16);
+                            return MetadataRegistry.GetType<Vector4>();
                     }
                     break;
                 case Basetype.Fp64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<double>(), 8);
+                            return MetadataRegistry.GetType<double>();
                         case 2:
-                            return (MetadataRegistry.GetType<(double, double)>(), 16);
+                            return MetadataRegistry.GetType<(double, double)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(double, double, double)>(), 24);
+                            return MetadataRegistry.GetType<(double, double, double)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(double, double, double, double)>(), 32);
+                            return MetadataRegistry.GetType<(double, double, double, double)>();
                     }
                     break;
                 case Basetype.Int8:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<sbyte>(), 8);
+                            return MetadataRegistry.GetType<sbyte>();
                         case 2:
-                            return (MetadataRegistry.GetType<(sbyte, sbyte)>(), 16);
+                            return MetadataRegistry.GetType<(sbyte, sbyte)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(sbyte, sbyte, sbyte)>(), 24);
+                            return MetadataRegistry.GetType<(sbyte, sbyte, sbyte)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(sbyte, sbyte, sbyte, sbyte)>(), 32);
+                            return MetadataRegistry.GetType<(sbyte, sbyte, sbyte, sbyte)>();
                     }
                     break;
                 case Basetype.Int16:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<short>(), 2);
+                            return MetadataRegistry.GetType<short>();
                         case 2:
-                            return (MetadataRegistry.GetType<(short, short)>(), 4);
+                            return MetadataRegistry.GetType<(short, short)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(short, short, short)>(), 6);
+                            return MetadataRegistry.GetType<(short, short, short)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(short, short, short, short)>(), 8);
+                            return MetadataRegistry.GetType<(short, short, short, short)>();
                     }
                     break;
                 case Basetype.Int32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<int>(), 4);
+                            return MetadataRegistry.GetType<int>();
                         case 2:
-                            return (MetadataRegistry.GetType<(int, int)>(), 8);
+                            return MetadataRegistry.GetType<(int, int)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(int, int, int)>(), 12);
+                            return MetadataRegistry.GetType<(int, int, int)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(int, int, int, int)>(), 16);
+                            return MetadataRegistry.GetType<(int, int, int, int)>();
                     }
                     break;
                 case Basetype.Int64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<long>(), 8);
+                            return MetadataRegistry.GetType<long>();
                         case 2:
-                            return (MetadataRegistry.GetType<(long, long)>(), 16);
+                            return MetadataRegistry.GetType<(long, long)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(long, long, long)>(), 24);
+                            return MetadataRegistry.GetType<(long, long, long)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(long, long, long, long)>(), 32);
+                            return MetadataRegistry.GetType<(long, long, long, long)>();
                     }
                     break;
                 case Basetype.Boolean:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<bool>(), 1);
+                            return MetadataRegistry.GetType<bool>();
                         case 2:
-                            return (MetadataRegistry.GetType<(bool, bool)>(), 2);
+                            return MetadataRegistry.GetType<(bool, bool)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(bool, bool, bool)>(), 3);
+                            return MetadataRegistry.GetType<(bool, bool, bool)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(bool, bool, bool, bool)>(), 4);
+                            return MetadataRegistry.GetType<(bool, bool, bool, bool)>();
                     }
                     break;
                 case Basetype.Uint8:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<byte>(), 1);
+                            return MetadataRegistry.GetType<byte>();
                         case 2:
-                            return (MetadataRegistry.GetType<(byte, byte)>(), 2);
+                            return MetadataRegistry.GetType<(byte, byte)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(byte, byte, byte)>(), 3);
+                            return MetadataRegistry.GetType<(byte, byte, byte)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(byte, byte, byte, byte)>(), 4);
+                            return MetadataRegistry.GetType<(byte, byte, byte, byte)>();
                     }
                     break;
                 case Basetype.Uint16:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<ushort>(), 2);
+                            return MetadataRegistry.GetType<ushort>();
                         case 2:
-                            return (MetadataRegistry.GetType<(ushort, ushort)>(), 4);
+                            return MetadataRegistry.GetType<(ushort, ushort)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(ushort, ushort, ushort)>(), 6);
+                            return MetadataRegistry.GetType<(ushort, ushort, ushort)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(ushort, ushort, ushort, ushort)>(), 8);
+                            return MetadataRegistry.GetType<(ushort, ushort, ushort, ushort)>();
                     }
                     break;
                 case Basetype.Uint32:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<uint>(), 4);
+                            return MetadataRegistry.GetType<uint>();
                         case 2:
-                            return (MetadataRegistry.GetType<(uint, uint)>(), 8);
+                            return MetadataRegistry.GetType<(uint, uint)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(uint, uint, uint)>(), 12);
+                            return MetadataRegistry.GetType<(uint, uint, uint)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(uint, uint, uint, uint)>(), 16);
+                            return MetadataRegistry.GetType<(uint, uint, uint, uint)>();
                     }
                     break;
                 case Basetype.Uint64:
                     switch (vectorSize)
                     {
                         case 1:
-                            return (MetadataRegistry.GetType<ulong>(), 8);
+                            return MetadataRegistry.GetType<ulong>();
                         case 2:
-                            return (MetadataRegistry.GetType<(ulong, ulong)>(), 16);
+                            return MetadataRegistry.GetType<(ulong, ulong)>();
                         case 3:
-                            return (MetadataRegistry.GetType<(ulong, ulong, ulong)>(), 24);
+                            return MetadataRegistry.GetType<(ulong, ulong, ulong)>();
                         case 4:
-                            return (MetadataRegistry.GetType<(ulong, ulong, ulong, ulong)>(), 32);
+                            return MetadataRegistry.GetType<(ulong, ulong, ulong, ulong)>();
                     }
                     break;
             }
