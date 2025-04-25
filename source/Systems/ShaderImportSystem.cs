@@ -5,6 +5,7 @@ using Simulation;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Unmanaged;
 using Worlds;
 
 namespace Shaders.Systems
@@ -104,17 +105,18 @@ namespace Shaders.Systems
             LoadData message = new(shader.world, request.address);
             if (context.TryHandleMessage(ref message) != default)
             {
-                if (message.TryGetBytes(out ReadOnlySpan<byte> data))
+                if (message.TryConsume(out ByteReader data))
                 {
                     Trace.WriteLine($"Loading shader data onto entity `{shader}`");
+                    Span<byte> bytes = data.GetBytes();
                     ShaderFlags flags = default;
-                    if (IsShaderInstanced(data))
+                    if (IsShaderInstanced(bytes))
                     {
                         flags |= ShaderFlags.Instanced;
                     }
 
-                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(data, request.type);
-                    message.Dispose();
+                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
+                    data.Dispose();
 
                     Operation operation = new();
                     operation.SelectEntity(shader);
