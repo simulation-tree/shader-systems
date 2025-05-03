@@ -60,13 +60,10 @@ namespace Shaders.Systems
 
                         if (request.status == IsShaderRequest.Status.Loading)
                         {
-                            IsShaderRequest dataRequest = request;
-                            if (TryLoadShader(shader, dataRequest, context))
+                            if (TryLoadShader(shader, request, context))
                             {
                                 Trace.WriteLine($"Shader `{shader}` has been loaded");
-
-                                //todo: being done this way because reference to the request may have shifted
-                                shader.SetComponent(dataRequest.BecomeLoaded());
+                                request.status = IsShaderRequest.Status.Loaded;
                             }
                             else
                             {
