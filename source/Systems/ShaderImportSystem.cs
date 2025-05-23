@@ -10,7 +10,7 @@ using Worlds;
 
 namespace Shaders.Systems
 {
-    public readonly partial struct ShaderImportSystem : ISystem
+    public partial class ShaderImportSystem : ISystem, IDisposable
     {
         private readonly ShaderCompiler shaderCompiler;
         private readonly Dictionary<Entity, uint> shaderVersions;
@@ -23,7 +23,7 @@ namespace Shaders.Systems
             operations = new();
         }
 
-        public readonly void Dispose()
+        public void Dispose()
         {
             while (operations.TryPop(out Operation operation))
             {
@@ -35,12 +35,9 @@ namespace Shaders.Systems
             shaderVersions.Dispose();
         }
 
-        void ISystem.Start(in SystemContext context, in World world)
+        void ISystem.Update(Simulator simulator, double deltaTime)
         {
-        }
-
-        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
-        {
+            World world = simulator.world;
             int componentType = world.Schema.GetComponentType<IsShaderRequest>();
             foreach (Chunk chunk in world.Chunks)
             {
@@ -60,14 +57,14 @@ namespace Shaders.Systems
 
                         if (request.status == IsShaderRequest.Status.Loading)
                         {
-                            if (TryLoadShader(shader, request, context))
+                            if (TryLoadShader(shader, request, simulator))
                             {
                                 Trace.WriteLine($"Shader `{shader}` has been loaded");
                                 request.status = IsShaderRequest.Status.Loaded;
                             }
                             else
                             {
-                                request.duration += delta;
+                                request.duration += deltaTime;
                                 if (request.duration >= request.timeout)
                                 {
                                     Trace.TraceError($"Shader `{shader}` could not be loaded");
@@ -82,11 +79,7 @@ namespace Shaders.Systems
             PerformOperations(world);
         }
 
-        void ISystem.Finish(in SystemContext context, in World world)
-        {
-        }
-
-        private readonly void PerformOperations(World world)
+        private void PerformOperations(World world)
         {
             while (operations.TryPop(out Operation operation))
             {
@@ -95,60 +88,58 @@ namespace Shaders.Systems
             }
         }
 
-        private readonly bool TryLoadShader(Entity shader, IsShaderRequest request, SystemContext context)
+        private bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
         {
             ThrowIfUnknownShaderType(request.type);
 
             LoadData message = new(shader.world, request.address);
-            if (context.TryHandleMessage(ref message) != default)
+            simulator.Broadcast(ref message);
+            if (message.TryConsume(out ByteReader data))
             {
-                if (message.TryConsume(out ByteReader data))
+                Trace.WriteLine($"Loading shader data onto entity `{shader}`");
+                Span<byte> bytes = data.GetBytes();
+                ShaderFlags flags = default;
+                if (IsShaderInstanced(bytes))
                 {
-                    Trace.WriteLine($"Loading shader data onto entity `{shader}`");
-                    Span<byte> bytes = data.GetBytes();
-                    ShaderFlags flags = default;
-                    if (IsShaderInstanced(bytes))
-                    {
-                        flags |= ShaderFlags.Instanced;
-                    }
-
-                    Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
-                    data.Dispose();
-
-                    Operation operation = new();
-                    operation.SelectEntity(shader);
-                    shader.TryGetComponent(out IsShader component);
-                    component.version++;
-                    component.flags = flags;
-                    operation.AddOrSetComponent(component);
-                    operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
-
-                    //fill metadata
-                    using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
-                    using List<ShaderUniformProperty> uniformProperties = new();
-                    shaderCompiler.ReadUniformPropertiesFromSPV(shaderBytes, uniformProperties, uniformPropertyMembers);
-                    operation.CreateOrSetArray(uniformProperties.AsSpan());
-                    operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
-                    if (request.type == ShaderType.Vertex)
-                    {
-                        using List<ShaderPushConstant> pushConstants = new();
-                        using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
-                        shaderCompiler.ReadPushConstantsFromSPV(shaderBytes, pushConstants);
-                        shaderCompiler.ReadVertexInputAttributesFromSPV(shaderBytes, vertexInputAttributes);
-                        operation.CreateOrSetArray(pushConstants.AsSpan());
-                        operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
-                    }
-
-                    if (request.type == ShaderType.Fragment)
-                    {
-                        using List<ShaderSamplerProperty> textureProperties = new();
-                        shaderCompiler.ReadTexturePropertiesFromSPV(shaderBytes, textureProperties);
-                        operation.CreateOrSetArray(textureProperties.AsSpan());
-                    }
-
-                    operations.Push(operation);
-                    return true;
+                    flags |= ShaderFlags.Instanced;
                 }
+
+                Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
+                data.Dispose();
+
+                Operation operation = new();
+                operation.SelectEntity(shader);
+                shader.TryGetComponent(out IsShader component);
+                component.version++;
+                component.flags = flags;
+                operation.AddOrSetComponent(component);
+                operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
+
+                //fill metadata
+                using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
+                using List<ShaderUniformProperty> uniformProperties = new();
+                shaderCompiler.ReadUniformPropertiesFromSPV(shaderBytes, uniformProperties, uniformPropertyMembers);
+                operation.CreateOrSetArray(uniformProperties.AsSpan());
+                operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
+                if (request.type == ShaderType.Vertex)
+                {
+                    using List<ShaderPushConstant> pushConstants = new();
+                    using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
+                    shaderCompiler.ReadPushConstantsFromSPV(shaderBytes, pushConstants);
+                    shaderCompiler.ReadVertexInputAttributesFromSPV(shaderBytes, vertexInputAttributes);
+                    operation.CreateOrSetArray(pushConstants.AsSpan());
+                    operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
+                }
+
+                if (request.type == ShaderType.Fragment)
+                {
+                    using List<ShaderSamplerProperty> textureProperties = new();
+                    shaderCompiler.ReadTexturePropertiesFromSPV(shaderBytes, textureProperties);
+                    operation.CreateOrSetArray(textureProperties.AsSpan());
+                }
+
+                operations.Push(operation);
+                return true;
             }
 
             return false;
