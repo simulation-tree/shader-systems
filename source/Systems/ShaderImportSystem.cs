@@ -13,24 +13,25 @@ namespace Shaders.Systems
     public partial class ShaderImportSystem : ISystem, IDisposable
     {
         private readonly ShaderCompiler shaderCompiler;
-        private readonly Dictionary<Entity, uint> shaderVersions;
-        private readonly Stack<Operation> operations;
+        private readonly Dictionary<uint, uint> shaderVersions;
+        private readonly Operation operation;
+        private readonly int requestType;
+        private readonly int shaderType;
 
-        public ShaderImportSystem()
+        public ShaderImportSystem(Simulator simulator)
         {
             shaderCompiler = new();
             shaderVersions = new(4);
-            operations = new();
+            operation = new();
+
+            Schema schema = simulator.world.Schema;
+            requestType = schema.GetComponentType<IsShaderRequest>();
+            shaderType = schema.GetComponentType<IsShader>();
         }
 
         public void Dispose()
         {
-            while (operations.TryPop(out Operation operation))
-            {
-                operation.Dispose();
-            }
-
-            operations.Dispose();
+            operation.Dispose();
             shaderCompiler.Dispose();
             shaderVersions.Dispose();
         }
@@ -38,17 +39,16 @@ namespace Shaders.Systems
         void ISystem.Update(Simulator simulator, double deltaTime)
         {
             World world = simulator.world;
-            int componentType = world.Schema.GetComponentType<IsShaderRequest>();
             foreach (Chunk chunk in world.Chunks)
             {
-                if (chunk.Definition.ContainsComponent(componentType))
+                if (chunk.Definition.ContainsComponent(requestType))
                 {
                     ReadOnlySpan<uint> entities = chunk.Entities;
-                    ComponentEnumerator<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(componentType);
+                    ComponentEnumerator<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(requestType);
                     for (int i = 0; i < entities.Length; i++)
                     {
                         ref IsShaderRequest request = ref components[i];
-                        Entity shader = new(world, entities[i]);
+                        uint shader = entities[i];
                         if (request.status == IsShaderRequest.Status.Submitted)
                         {
                             request.status = IsShaderRequest.Status.Loading;
@@ -57,7 +57,7 @@ namespace Shaders.Systems
 
                         if (request.status == IsShaderRequest.Status.Loading)
                         {
-                            if (TryLoadShader(shader, request, simulator))
+                            if (TryLoadShader(world, shader, request, simulator))
                             {
                                 Trace.WriteLine($"Shader `{shader}` has been loaded");
                                 request.status = IsShaderRequest.Status.Loaded;
@@ -76,23 +76,18 @@ namespace Shaders.Systems
                 }
             }
 
-            PerformOperations(world);
-        }
-
-        private void PerformOperations(World world)
-        {
-            while (operations.TryPop(out Operation operation))
+            if (operation.Count > 0)
             {
                 operation.Perform(world);
-                operation.Dispose();
+                operation.Reset();
             }
         }
 
-        private bool TryLoadShader(Entity shader, IsShaderRequest request, Simulator simulator)
+        private bool TryLoadShader(World world, uint shader, IsShaderRequest request, Simulator simulator)
         {
             ThrowIfUnknownShaderType(request.type);
 
-            LoadData message = new(shader.world, request.address);
+            LoadData message = new(world, request.address);
             simulator.Broadcast(ref message);
             if (message.TryConsume(out ByteReader data))
             {
@@ -107,9 +102,8 @@ namespace Shaders.Systems
                 Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
                 data.Dispose();
 
-                Operation operation = new();
-                operation.SelectEntity(shader);
-                shader.TryGetComponent(out IsShader component);
+                operation.SetSelectedEntity(shader);
+                world.TryGetComponent(shader, shaderType, out IsShader component);
                 component.version++;
                 component.flags = flags;
                 operation.AddOrSetComponent(component);
@@ -138,7 +132,6 @@ namespace Shaders.Systems
                     operation.CreateOrSetArray(textureProperties.AsSpan());
                 }
 
-                operations.Push(operation);
                 return true;
             }
 

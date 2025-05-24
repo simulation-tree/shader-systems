@@ -18,8 +18,8 @@ namespace Shaders.Tests
         protected override void SetUp()
         {
             base.SetUp();
-            Simulator.Add(new DataImportSystem());
-            Simulator.Add(new ShaderImportSystem());
+            Simulator.Add(new DataImportSystem(Simulator));
+            Simulator.Add(new ShaderImportSystem(Simulator));
         }
 
         protected override void TearDown()
