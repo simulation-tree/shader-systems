@@ -10,37 +10,43 @@ using Worlds;
 
 namespace Shaders.Systems
 {
-    public partial class ShaderImportSystem : ISystem, IDisposable
+    [SkipLocalsInit]
+    public partial class ShaderImportSystem : SystemBase, IListener<DataUpdate>
     {
+        private readonly World world;
         private readonly ShaderCompiler shaderCompiler;
         private readonly Dictionary<uint, uint> shaderVersions;
         private readonly Operation operation;
         private readonly int requestType;
         private readonly int shaderType;
+        private readonly int byteArrayType;
 
-        public ShaderImportSystem(Simulator simulator)
+        public ShaderImportSystem(Simulator simulator, World world) : base(simulator)
         {
+            this.world = world;
             shaderCompiler = new();
             shaderVersions = new(4);
-            operation = new();
+            operation = new(world);
 
-            Schema schema = simulator.world.Schema;
+            Schema schema = world.Schema;
             requestType = schema.GetComponentType<IsShaderRequest>();
             shaderType = schema.GetComponentType<IsShader>();
+            byteArrayType = schema.GetArrayType<ShaderByte>();
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             operation.Dispose();
             shaderCompiler.Dispose();
             shaderVersions.Dispose();
         }
 
-        void ISystem.Update(Simulator simulator, double deltaTime)
+        void IListener<DataUpdate>.Receive(ref DataUpdate message)
         {
-            World world = simulator.world;
-            foreach (Chunk chunk in world.Chunks)
+            ReadOnlySpan<Chunk> chunks = world.Chunks;
+            for (int c = 0; c < chunks.Length; c++)
             {
+                Chunk chunk = chunks[c];
                 if (chunk.Definition.ContainsComponent(requestType))
                 {
                     ReadOnlySpan<uint> entities = chunk.Entities;
@@ -57,14 +63,14 @@ namespace Shaders.Systems
 
                         if (request.status == IsShaderRequest.Status.Loading)
                         {
-                            if (TryLoadShader(world, shader, request, simulator))
+                            if (TryLoadShader(shader, request))
                             {
                                 Trace.WriteLine($"Shader `{shader}` has been loaded");
                                 request.status = IsShaderRequest.Status.Loaded;
                             }
                             else
                             {
-                                request.duration += deltaTime;
+                                request.duration += message.deltaTime;
                                 if (request.duration >= request.timeout)
                                 {
                                     Trace.TraceError($"Shader `{shader}` could not be loaded");
@@ -76,22 +82,22 @@ namespace Shaders.Systems
                 }
             }
 
-            if (operation.Count > 0)
+            if (operation.TryPerform())
             {
-                operation.Perform(world);
                 operation.Reset();
             }
         }
 
-        private bool TryLoadShader(World world, uint shader, IsShaderRequest request, Simulator simulator)
+        private bool TryLoadShader(uint shaderEntity, IsShaderRequest request)
         {
             ThrowIfUnknownShaderType(request.type);
 
-            LoadData message = new(world, request.address);
+            //todo: should shaders be cached based on address? what if its loaded from file on disk and the file changes?
+            LoadData message = new(request.address);
             simulator.Broadcast(ref message);
             if (message.TryConsume(out ByteReader data))
             {
-                Trace.WriteLine($"Loading shader data onto entity `{shader}`");
+                Trace.WriteLine($"Loading shader data onto entity `{shaderEntity}`");
                 Span<byte> bytes = data.GetBytes();
                 ShaderFlags flags = default;
                 if (IsShaderInstanced(bytes))
@@ -102,12 +108,12 @@ namespace Shaders.Systems
                 Span<byte> shaderBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
                 data.Dispose();
 
-                operation.SetSelectedEntity(shader);
-                world.TryGetComponent(shader, shaderType, out IsShader component);
-                component.version++;
-                component.flags = flags;
-                operation.AddOrSetComponent(component);
-                operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>());
+                operation.SetSelectedEntity(shaderEntity);
+                world.TryGetComponent(shaderEntity, shaderType, out IsShader shader);
+                shader.version++;
+                shader.flags = flags;
+                operation.AddOrSetComponent(shader, shaderType);
+                operation.CreateOrSetArray(shaderBytes.As<byte, ShaderByte>(), byteArrayType);
 
                 //fill metadata
                 using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
@@ -138,7 +144,6 @@ namespace Shaders.Systems
             return false;
         }
 
-        [SkipLocalsInit]
         private static bool IsShaderInstanced(ReadOnlySpan<byte> bytes)
         {
             const string InstanceIndex = "gl_InstanceIndex";

@@ -295,7 +295,7 @@ namespace Shaders.Systems
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
                 //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
-                string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty; //todo: efficiency: get the sbyte* pointer exposed
+                string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.SampledImage)

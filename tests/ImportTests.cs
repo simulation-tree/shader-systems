@@ -63,8 +63,8 @@ namespace Shaders.Tests
             Shader vertexShader = new(world, "vertex.glsl", ShaderType.Vertex);
             Shader fragmentShader = new(world, "fragment.glsl", ShaderType.Fragment);
 
-            await vertexShader.UntilCompliant(Simulator.Update, cancellation);
-            await fragmentShader.UntilCompliant(Simulator.Update, cancellation);
+            await vertexShader.UntilCompliant(Update, cancellation);
+            await fragmentShader.UntilCompliant(Update, cancellation);
 
             Assert.That(vertexShader.VertexInputAttributes.Length, Is.EqualTo(2));
             ShaderVertexInputAttribute first = vertexShader.VertexInputAttributes[0];
@@ -147,7 +147,7 @@ namespace Shaders.Tests
 
             Shader vertexShader = new(world, "vertex.glsl", ShaderType.Vertex);
 
-            await vertexShader.UntilCompliant(Simulator.Update, cancellation);
+            await vertexShader.UntilCompliant(Update, cancellation);
 
             Assert.That(vertexShader.IsInstanced, Is.True);
 

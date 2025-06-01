@@ -1,4 +1,5 @@
 ﻿using Data;
+using Data.Messages;
 using Data.Systems;
 using Shaders.Systems;
 using Simulation.Tests;
@@ -9,6 +10,8 @@ namespace Shaders.Tests
 {
     public class ShaderSystemsTests : SimulationTests
     {
+        public World world;
+
         static ShaderSystemsTests()
         {
             MetadataRegistry.Load<DataMetadataBank>();
@@ -18,23 +21,25 @@ namespace Shaders.Tests
         protected override void SetUp()
         {
             base.SetUp();
-            Simulator.Add(new DataImportSystem(Simulator));
-            Simulator.Add(new ShaderImportSystem(Simulator));
+            Schema schema = new();
+            schema.Load<DataSchemaBank>();
+            schema.Load<ShadersSchemaBank>();
+            world = new(schema);
+            Simulator.Add(new DataImportSystem(Simulator, world));
+            Simulator.Add(new ShaderImportSystem(Simulator, world));
         }
 
         protected override void TearDown()
         {
             Simulator.Remove<ShaderImportSystem>();
             Simulator.Remove<DataImportSystem>();
+            world.Dispose();
             base.TearDown();
         }
 
-        protected override Schema CreateSchema()
+        protected override void Update(double deltaTime)
         {
-            Schema schema = base.CreateSchema();
-            schema.Load<DataSchemaBank>();
-            schema.Load<ShadersSchemaBank>();
-            return schema;
+            Simulator.Broadcast(new DataUpdate(deltaTime));
         }
     }
 }
