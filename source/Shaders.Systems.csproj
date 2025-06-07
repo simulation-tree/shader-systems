@@ -1,40 +1,49 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
-        <RootNamespace>Shaders.Systems</RootNamespace>
-        <ImplicitUsings>disable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <Title>Shaders Systems</Title>
-        <Authors>popcron</Authors>
-        <Company>simulation-tree</Company>
-        <RepositoryUrl>https://github.com/simulation-tree/shader-systems</RepositoryUrl>
-        <IsAotCompatible>True</IsAotCompatible>
-        <IsTrimmable>True</IsTrimmable>
-        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-        <PackageId/>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Shaders.Systems</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Title>Shaders Systems</Title>
+    <Authors>popcron</Authors>
+    <Company>simulation-tree</Company>
+    <RepositoryUrl>https://github.com/simulation-tree/shader-systems</RepositoryUrl>
+    <IsAotCompatible>True</IsAotCompatible>
+    <IsTrimmable>True</IsTrimmable>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Vortice.ShaderCompiler" Version="1.8.0"/>
-        <PackageReference Include="Vortice.SpirvCross" Version="1.5.2"/>
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.ShaderCompiler" Version="1.8.0"/>
+    <PackageReference Include="Vortice.SpirvCross" Version="1.5.2"/>
+  </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\data\core\Data.Core.csproj"/>
-        <ProjectReference Include="..\..\shaders\source\Shaders.csproj"/>
-        <ProjectReference Include="..\..\collections\source\Collections.csproj"/>
-        <ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj"/>
-        <ProjectReference Include="..\..\unmanaged\core\Unmanaged.Core.csproj"/>
-        <ProjectReference Include="..\..\simulation\generator\Simulation.Generator.csproj">
-            <OutputItemType>Analyzer</OutputItemType>
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-        </ProjectReference>
-        <ProjectReference Include="..\..\worlds\generator\Worlds.Generator.csproj">
-            <OutputItemType>Analyzer</OutputItemType>
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-        </ProjectReference>
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\data\core\Data.Core.csproj"/>
+    <ProjectReference Include="..\..\shaders\source\Shaders.csproj"/>
+    <ProjectReference Include="..\..\collections\source\Collections.csproj"/>
+    <ProjectReference Include="..\..\simulation\core\Simulation.Core.csproj"/>
+    <ProjectReference Include="..\..\unmanaged\core\Unmanaged.Core.csproj"/>
+    <ProjectReference Include="..\..\simulation\generator\Simulation.Generator.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\worlds\generator\Worlds.Generator.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="bin/Debug/net9.0/Shaders.Systems.dll" Pack="true" PackagePath="tools/debug/Shaders.Systems.dll" Visible="false"/>
+    <Content Include="bin/Debug/net9.0/Shaders.Systems.xml" Pack="true" PackagePath="tools/debug/Shaders.Systems.xml" Visible="false"/>
+    <Content Include="bin/Release/net9.0/Shaders.Systems.dll" Pack="true" PackagePath="tools/release/Shaders.Systems.dll" Visible="false"/>
+    <Content Include="bin/Release/net9.0/Shaders.Systems.xml" Pack="true" PackagePath="tools/release/Shaders.Systems.xml" Visible="false"/>
+    <Content Include="build/Shaders.Systems.targets" Pack="true" PackagePath="build/Shaders.Systems.targets" Visible="false"/>
+  </ItemGroup>
 
 </Project>
