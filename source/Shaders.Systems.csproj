@@ -14,7 +14,7 @@
     <IsTrimmable>True</IsTrimmable>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <OutDir>bin/$(TargetFramework)/$(Configuration)</OutDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,11 +39,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="bin/Debug/net9.0/Shaders.Systems.dll" Pack="true" PackagePath="tools/debug/Shaders.Systems.dll" Visible="false"/>
-    <Content Include="bin/Debug/net9.0/Shaders.Systems.xml" Pack="true" PackagePath="tools/debug/Shaders.Systems.xml" Visible="false" Condition="Exists('bin/Debug/net9.0/Shaders.Systems.xml')"/>
-    <Content Include="bin/Release/net9.0/Shaders.Systems.dll" Pack="true" PackagePath="tools/release/Shaders.Systems.dll" Visible="false"/>
-    <Content Include="bin/Release/net9.0/Shaders.Systems.xml" Pack="true" PackagePath="tools/release/Shaders.Systems.xml" Visible="false" Condition="Exists('bin/Release/net9.0/Shaders.Systems.xml')"/>
-    <Content Include="build/Shaders.Systems.targets" Pack="true" PackagePath="build/Shaders.Systems.targets" Visible="false"/>
+    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false"/>
+    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive"/>
   </ItemGroup>
 
 </Project>
