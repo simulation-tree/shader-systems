@@ -159,7 +159,7 @@ namespace Shaders.Tests
             Assert.That(storageBuffers.Length, Is.EqualTo(2));
 
             ShaderStorageBuffer instanceData = storageBuffers[0];
-            Assert.That(instanceData.name.ToString(), Is.EqualTo("instanceData"));
+            Assert.That(instanceData.label.ToString(), Is.EqualTo("instanceData"));
             Assert.That(instanceData.typeName.ToString(), Is.EqualTo("InstanceData"));
             Assert.That(instanceData.binding, Is.EqualTo(2));
             Assert.That(instanceData.set, Is.EqualTo(1));
@@ -167,7 +167,7 @@ namespace Shaders.Tests
             Assert.That(instanceData.flags, Is.EqualTo(ShaderStorageBuffer.Flags.ReadWrite));
 
             ShaderStorageBuffer lotsOfData = storageBuffers[1];
-            Assert.That(lotsOfData.name.ToString(), Is.EqualTo("lotsOfData"));
+            Assert.That(lotsOfData.label.ToString(), Is.EqualTo("lotsOfData"));
             Assert.That(lotsOfData.typeName.ToString(), Is.EqualTo("LotsOfData"));
             Assert.That(lotsOfData.binding, Is.EqualTo(3));
             Assert.That(lotsOfData.set, Is.EqualTo(3));

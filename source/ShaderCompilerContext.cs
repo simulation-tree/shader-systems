@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Types;
 using Unmanaged;
 using Vortice.ShaderCompiler;
+using Vortice.SPIRV;
 using Vortice.SpirvCross;
 using static Vortice.SpirvCross.SpirvCrossApi;
 using Result = Vortice.SpirvCross.Result;
@@ -199,20 +200,20 @@ namespace Shaders.Systems
                 for (int i = 0; i < resourcesSpan.Length; i++)
                 {
                     spvc_reflected_resource resource = resourcesSpan[i];
-                    uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
-                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                    uint set = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.DescriptorSet);
+                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Binding);
                     string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                     spvc_type typeHandle = spvc_compiler_get_type_handle(compiler, resource.type_id);
                     Basetype baseType = spvc_type_get_basetype(typeHandle);
                     if (baseType == Basetype.Struct)
                     {
                         ShaderStorageBuffer.Flags flags = default;
-                        if (spvc_compiler_has_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.NonWritable))
+                        if (spvc_compiler_has_decoration(compiler, resource.id, SpvDecoration.NonWritable))
                         {
                             flags |= ShaderStorageBuffer.Flags.ReadOnly;
                         }
 
-                        if (spvc_compiler_has_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.NonReadable))
+                        if (spvc_compiler_has_decoration(compiler, resource.id, SpvDecoration.NonReadable))
                         {
                             flags |= ShaderStorageBuffer.Flags.WriteOnly;
                         }
@@ -248,8 +249,8 @@ namespace Shaders.Systems
                 int startIndex = list.Count;
                 foreach (spvc_reflected_resource resource in resourcesSpan)
                 {
-                    uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
-                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                    uint set = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.DescriptorSet);
+                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Binding);
                     //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
                     //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset);
                     ASCIIText256 nameText = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
@@ -322,9 +323,9 @@ namespace Shaders.Systems
                 uint offset = 0;
                 foreach (spvc_reflected_resource resource in resourcesSpan)
                 {
-                    uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
+                    uint location = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Location);
                     //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset); //gives 0
-                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Binding);
                     spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                     uint vectorSize = spvc_type_get_vector_size(type);
                     string name = new(spvc_compiler_get_name(compiler, resource.id));
@@ -342,8 +343,8 @@ namespace Shaders.Systems
                 for (int i = 0; i < resourcesSpan.Length; i++)
                 {
                     spvc_reflected_resource resource = resourcesSpan[i];
-                    uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
-                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                    uint set = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.DescriptorSet);
+                    uint binding = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Binding);
                     string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                     spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                     Basetype baseType = spvc_type_get_basetype(type);
