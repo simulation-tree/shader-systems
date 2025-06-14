@@ -1,4 +1,5 @@
 ﻿using Data;
+using System;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,6 +85,7 @@ namespace Shaders.Tests
             Assert.That(vertexShader.UniformProperties.Length, Is.EqualTo(1));
             ShaderUniformProperty cameraInfo = vertexShader.UniformProperties[0];
             Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
+            Assert.That(cameraInfo.typeName.ToString(), Is.EqualTo("CameraInfo"));
             Assert.That(cameraInfo.binding, Is.EqualTo(2));
             Assert.That(cameraInfo.set, Is.EqualTo(0));
             Assert.That(vertexShader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
@@ -124,9 +126,13 @@ namespace Shaders.Tests
                 layout (location = 0) in vec2 aPos;
                 layout (location = 1) in vec3 aColor;
 
-                layout (binding = 2) readonly buffer InstanceData {
+                layout (binding = 2, set = 1) buffer InstanceData {
                     vec2 offsets[];
                 } instanceData;
+
+                layout (binding = 3, set = 3) readonly buffer LotsOfData {
+                    vec2 offsets[];
+                } lotsOfData;
 
                 layout(location = 0) out vec3 fColor;
                 
@@ -149,7 +155,24 @@ namespace Shaders.Tests
 
             await vertexShader.UntilCompliant(Update, cancellation);
 
-            Assert.That(vertexShader.IsInstanced, Is.True);
+            ReadOnlySpan<ShaderStorageBuffer> storageBuffers = vertexShader.StorageBuffers;
+            Assert.That(storageBuffers.Length, Is.EqualTo(2));
+
+            ShaderStorageBuffer instanceData = storageBuffers[0];
+            Assert.That(instanceData.name.ToString(), Is.EqualTo("instanceData"));
+            Assert.That(instanceData.typeName.ToString(), Is.EqualTo("InstanceData"));
+            Assert.That(instanceData.binding, Is.EqualTo(2));
+            Assert.That(instanceData.set, Is.EqualTo(1));
+            Assert.That(instanceData.byteLength, Is.EqualTo(8));
+            Assert.That(instanceData.flags, Is.EqualTo(ShaderStorageBuffer.Flags.ReadWrite));
+
+            ShaderStorageBuffer lotsOfData = storageBuffers[1];
+            Assert.That(lotsOfData.name.ToString(), Is.EqualTo("lotsOfData"));
+            Assert.That(lotsOfData.typeName.ToString(), Is.EqualTo("LotsOfData"));
+            Assert.That(lotsOfData.binding, Is.EqualTo(3));
+            Assert.That(lotsOfData.set, Is.EqualTo(3));
+            Assert.That(lotsOfData.byteLength, Is.EqualTo(8));
+            //Assert.That(lotsOfData.flags, Is.EqualTo(ShaderStorageBuffer.Flags.ReadOnly)); //spvc isnt able to read the decorations for some reason
 
             Assert.That(vertexShader.VertexInputAttributes.Length, Is.EqualTo(2));
             ShaderVertexInputAttribute first = vertexShader.VertexInputAttributes[0];

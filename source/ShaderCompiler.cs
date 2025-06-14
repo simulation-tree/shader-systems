@@ -160,8 +160,9 @@ namespace Shaders.Systems
                 if (baseType == Basetype.Struct)
                 {
                     uint baseTypeId = spvc_type_get_base_type_id(type);
+                    string baseTypeName = spvc_compiler_get_name(compiler, baseTypeId) ?? string.Empty;
                     uint memberCount = spvc_type_get_num_member_types(type);
-                    uint size = 0;
+                    uint byteLength = 0;
                     for (uint m = 0; m < memberCount; m++)
                     {
                         uint memberTypeId = spvc_type_get_member_type(type, m);
@@ -169,10 +170,10 @@ namespace Shaders.Systems
                         uint vectorSize = spvc_type_get_vector_size(memberType);
                         TypeMetadata runtimeType = GetRuntimeType(memberType, vectorSize);
                         members.Add(new(nameText, runtimeType, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
-                        size += runtimeType.Size;
+                        byteLength += runtimeType.Size;
                     }
 
-                    ShaderUniformProperty uniformBuffer = new(nameText, (byte)binding, (byte)set, size);
+                    ShaderUniformProperty uniformBuffer = new(nameText, baseTypeName, binding, set, byteLength);
                     list.Insert(startIndex, uniformBuffer);
                 }
                 else
@@ -218,9 +219,8 @@ namespace Shaders.Systems
                     for (uint r = 0; r < rangeCount; r++)
                     {
                         spvc_buffer_range first = range[r];
-                        uint memberIndex = first.index;
-                        byte* memberName = spvc_compiler_get_member_name(compiler, baseTypeId, memberIndex);
-                        ShaderPushConstant pushConstant = new(name, new(memberName), (byte)first.offset, (byte)first.range);
+                        byte* memberName = spvc_compiler_get_member_name(compiler, baseTypeId, first.index);
+                        ShaderPushConstant pushConstant = new(name, new(memberName), (uint)first.offset, (uint)first.range);
                         list.Insert(0, pushConstant);
                     }
                 }
@@ -254,25 +254,26 @@ namespace Shaders.Systems
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.StageInput, out spvc_reflected_resource* resourceList, out nuint resourceCount);
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
-            byte offset = 0;
+            uint offset = 0;
             foreach (spvc_reflected_resource resource in resourcesSpan)
             {
-                byte location = (byte)spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
+                uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
                 //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset); //gives 0
-                byte binding = (byte)spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 uint vectorSize = spvc_type_get_vector_size(type);
                 string name = new(spvc_compiler_get_name(compiler, resource.id));
                 TypeMetadata runtimeType = GetRuntimeType(type, vectorSize);
                 ShaderVertexInputAttribute vertexInputAttribute = new(name, location, binding, offset, runtimeType);
                 list.Add(vertexInputAttribute);
-                offset += (byte)runtimeType.Size;
+                offset += runtimeType.Size;
             }
         }
 
         public readonly void ReadTexturePropertiesFromSPV(ReadOnlySpan<byte> fragmentBytes, List<ShaderSamplerProperty> list)
         {
             ThrowIfDisposed();
+
             Result result = spvc_context_parse_spirv(spvContext, fragmentBytes, out spvc_parsed_ir parsedIr);
             if (result != Result.Success)
             {
@@ -290,18 +291,84 @@ namespace Shaders.Systems
             spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
             spvc_resources_get_resource_list_for_type(resources, ResourceType.SampledImage, out spvc_reflected_resource* resourceList, out nuint resourceCount);
             Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
-            foreach (spvc_reflected_resource resource in resourcesSpan)
+            for (int i = 0; i < resourcesSpan.Length; i++)
             {
+                spvc_reflected_resource resource = resourcesSpan[i];
                 uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
                 uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
-                //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
                 string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                 spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                 Basetype baseType = spvc_type_get_basetype(type);
                 if (baseType == Basetype.SampledImage)
                 {
-                    ShaderSamplerProperty texture = new(name, (byte)binding, (byte)set);
+                    ShaderSamplerProperty texture = new(name, binding, set);
                     list.Add(texture);
+                }
+                else
+                {
+                    throw new Exception($"Unsupported type: {baseType}");
+                }
+            }
+        }
+
+        public readonly void ReadStorageBuffersFromSPV(ReadOnlySpan<byte> shaderBytes, List<ShaderStorageBuffer> list)
+        {
+            ThrowIfDisposed();
+
+            Result result = spvc_context_parse_spirv(spvContext, shaderBytes, out spvc_parsed_ir parsedIr);
+            if (result != Result.Success)
+            {
+                string? error = spvc_context_get_last_error_string(spvContext);
+                throw new Exception($"Failed to parse SPIR-V: {error ?? result.ToString()}");
+            }
+
+            result = spvc_context_create_compiler(spvContext, Backend.GLSL, parsedIr, CaptureMode.TakeOwnership, out spvc_compiler compiler);
+            if (result != Result.Success)
+            {
+                string? error = spvc_context_get_last_error_string(spvContext);
+                throw new Exception($"Failed to create SPIR-V compiler: {error ?? result.ToString()}");
+            }
+
+            spvc_compiler_create_shader_resources(compiler, out spvc_resources resources);
+            spvc_resources_get_resource_list_for_type(resources, ResourceType.StorageBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
+            Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
+            for (int i = 0; i < resourcesSpan.Length; i++)
+            {
+                spvc_reflected_resource resource = resourcesSpan[i];
+                uint set = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.DescriptorSet);
+                uint binding = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Binding);
+                string name = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
+                spvc_type typeHandle = spvc_compiler_get_type_handle(compiler, resource.type_id);
+                Basetype baseType = spvc_type_get_basetype(typeHandle);
+                if (baseType == Basetype.Struct)
+                {
+                    ShaderStorageBuffer.Flags flags = default;
+                    if (spvc_compiler_has_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.NonWritable))
+                    {
+                        flags |= ShaderStorageBuffer.Flags.ReadOnly;
+                    }
+
+                    if (spvc_compiler_has_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.NonReadable))
+                    {
+                        flags |= ShaderStorageBuffer.Flags.WriteOnly;
+                    }
+
+                    //get the type name
+                    uint baseTypeId = spvc_type_get_base_type_id(typeHandle);
+                    string baseTypeName = spvc_compiler_get_name(compiler, baseTypeId) ?? string.Empty;
+                    uint memberCount = spvc_type_get_num_member_types(typeHandle);
+                    uint byteLength = 0;
+                    for (uint m = 0; m < memberCount; m++)
+                    {
+                        uint memberTypeId = spvc_type_get_member_type(typeHandle, m);
+                        spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
+                        uint vectorSize = spvc_type_get_vector_size(memberType);
+                        TypeMetadata runtimeType = GetRuntimeType(memberType, vectorSize);
+                        byteLength += runtimeType.Size;
+                    }
+
+                    ShaderStorageBuffer storageBuffer = new(name, baseTypeName, binding, set, byteLength, flags);
+                    list.Add(storageBuffer);
                 }
                 else
                 {
