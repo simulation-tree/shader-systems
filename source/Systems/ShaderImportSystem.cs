@@ -14,7 +14,7 @@ namespace Shaders.Systems
     public partial class ShaderImportSystem : SystemBase, IListener<DataUpdate>
     {
         private readonly World world;
-        private readonly ShaderCompiler shaderCompiler;
+        private readonly ShaderCompilerContext shaderCompiler;
         private readonly Dictionary<uint, uint> shaderVersions;
         private readonly Operation operation;
         private readonly int requestType;
@@ -105,21 +105,23 @@ namespace Shaders.Systems
                 operation.SetSelectedEntity(shaderEntity);
                 world.TryGetComponent(shaderEntity, shaderType, out IsShader shader);
                 shader.version++;
+                shader.type = request.type;
                 operation.AddOrSetComponent(shader, shaderType);
                 operation.CreateOrSetArray(spvBytes.As<byte, ShaderByte>(), byteArrayType);
 
                 //fill metadata
+                ShaderCompilerContext.Compiler compiler = shaderCompiler.GetCompiler(spvBytes, Vortice.SpirvCross.Backend.GLSL);
                 using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
                 using List<ShaderUniformProperty> uniformProperties = new();
-                shaderCompiler.ReadUniformPropertiesFromSPV(spvBytes, uniformProperties, uniformPropertyMembers);
+                compiler.ReadUniformProperties(uniformProperties, uniformPropertyMembers);
                 operation.CreateOrSetArray(uniformProperties.AsSpan());
                 operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
                 if (request.type == ShaderType.Vertex)
                 {
                     using List<ShaderPushConstant> pushConstants = new();
                     using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
-                    shaderCompiler.ReadPushConstantsFromSPV(spvBytes, pushConstants);
-                    shaderCompiler.ReadVertexInputAttributesFromSPV(spvBytes, vertexInputAttributes);
+                    compiler.ReadPushConstants(pushConstants);
+                    compiler.ReadVertexInputAttributes(vertexInputAttributes);
                     operation.CreateOrSetArray(pushConstants.AsSpan());
                     operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
                 }
@@ -127,12 +129,12 @@ namespace Shaders.Systems
                 if (request.type == ShaderType.Fragment)
                 {
                     using List<ShaderSamplerProperty> textureProperties = new();
-                    shaderCompiler.ReadTexturePropertiesFromSPV(spvBytes, textureProperties);
+                    compiler.ReadTextureProperties(textureProperties);
                     operation.CreateOrSetArray(textureProperties.AsSpan());
                 }
 
                 using List<ShaderStorageBuffer> storageBuffers = new();
-                shaderCompiler.ReadStorageBuffersFromSPV(spvBytes, storageBuffers);
+                compiler.ReadStorageBuffers(storageBuffers);
                 operation.CreateOrSetArray(storageBuffers.AsSpan());
                 return true;
             }
