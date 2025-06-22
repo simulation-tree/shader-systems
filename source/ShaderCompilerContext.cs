@@ -193,7 +193,7 @@ namespace Shaders.Systems
                 spvc_compiler_create_shader_resources(compiler, out resources);
             }
 
-            public readonly void ReadStorageBuffers(List<ShaderStorageBuffer> list)
+            public readonly void ReadStorageBuffers(List<ShaderStorageBuffer> buffers, List<ShaderStorageBufferMember> members)
             {
                 spvc_resources_get_resource_list_for_type(resources, ResourceType.StorageBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
                 Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
@@ -229,11 +229,19 @@ namespace Shaders.Systems
                             spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                             uint vectorSize = spvc_type_get_vector_size(memberType);
                             TypeMetadata runtimeType = GetRuntimeType(memberType, vectorSize);
+                            ShaderStorageBufferMember.Flags memberFlags = default;
+                            if (spvc_type_array_dimension_is_literal(memberType, vectorSize))
+                            {
+                                memberFlags |= ShaderStorageBufferMember.Flags.Array;
+                            }
+
+                            ShaderStorageBufferMember member = new(name.GetLongHashCode(), runtimeType, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m)), byteLength, memberFlags);
+                            members.Add(member);
                             byteLength += runtimeType.Size;
                         }
 
                         ShaderStorageBuffer storageBuffer = new(name, baseTypeName, binding, set, byteLength, flags);
-                        list.Add(storageBuffer);
+                        buffers.Add(storageBuffer);
                     }
                     else
                     {
@@ -242,18 +250,18 @@ namespace Shaders.Systems
                 }
             }
 
-            public readonly void ReadUniformProperties(List<ShaderUniformProperty> list, List<ShaderUniformPropertyMember> members)
+            public readonly void ReadUniformProperties(List<ShaderUniformProperty> uniformProperties, List<ShaderUniformPropertyMember> members)
             {
                 spvc_resources_get_resource_list_for_type(resources, ResourceType.UniformBuffer, out spvc_reflected_resource* resourceList, out nuint resourceCount);
                 Span<spvc_reflected_resource> resourcesSpan = new(resourceList, (int)resourceCount);
-                int startIndex = list.Count;
+                int startIndex = uniformProperties.Count;
                 foreach (spvc_reflected_resource resource in resourcesSpan)
                 {
                     uint set = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.DescriptorSet);
                     uint binding = spvc_compiler_get_decoration(compiler, resource.id, SpvDecoration.Binding);
                     //uint location = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Location);
                     //uint offset = spvc_compiler_get_decoration(compiler, resource.id, Vortice.SPIRV.SpvDecoration.Offset);
-                    ASCIIText256 nameText = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
+                    ASCIIText256 propertyName = spvc_compiler_get_name(compiler, resource.id) ?? string.Empty;
                     spvc_type type = spvc_compiler_get_type_handle(compiler, resource.type_id);
                     Basetype baseType = spvc_type_get_basetype(type);
                     if (baseType == Basetype.Struct)
@@ -268,12 +276,13 @@ namespace Shaders.Systems
                             spvc_type memberType = spvc_compiler_get_type_handle(compiler, memberTypeId);
                             uint vectorSize = spvc_type_get_vector_size(memberType);
                             TypeMetadata runtimeType = GetRuntimeType(memberType, vectorSize);
-                            members.Add(new(nameText, runtimeType, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m))));
+                            ShaderUniformPropertyMember member = new(propertyName.GetLongHashCode(), runtimeType, new ASCIIText256(spvc_compiler_get_member_name(compiler, baseTypeId, m)), byteLength);
+                            members.Add(member);
                             byteLength += runtimeType.Size;
                         }
 
-                        ShaderUniformProperty uniformBuffer = new(nameText, baseTypeName, binding, set, byteLength);
-                        list.Insert(startIndex, uniformBuffer);
+                        ShaderUniformProperty uniformBuffer = new(propertyName, baseTypeName, binding, set, byteLength);
+                        uniformProperties.Insert(startIndex, uniformBuffer);
                     }
                     else
                     {

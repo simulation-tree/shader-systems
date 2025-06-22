@@ -90,7 +90,7 @@ namespace Shaders.Systems
 
         private bool TryLoadShader(uint shaderEntity, IsShaderRequest request)
         {
-            ThrowIfUnknownShaderType(request.type);
+            ShaderType type = request.flags.GetShaderType();
 
             //todo: should shaders be cached based on address? what if its loaded from file on disk and the file changes?
             LoadData message = new(request.address);
@@ -99,13 +99,13 @@ namespace Shaders.Systems
             {
                 Trace.WriteLine($"Loading shader data onto entity `{shaderEntity}`");
                 Span<byte> bytes = data.GetBytes();
-                Span<byte> spvBytes = shaderCompiler.GLSLToSPV(bytes, request.type);
+                Span<byte> spvBytes = shaderCompiler.GLSLToSPV(bytes, type);
                 data.Dispose();
 
                 operation.SetSelectedEntity(shaderEntity);
                 world.TryGetComponent(shaderEntity, shaderType, out IsShader shader);
                 shader.version++;
-                shader.type = request.type;
+                shader.type = type;
                 operation.AddOrSetComponent(shader, shaderType);
                 operation.CreateOrSetArray(spvBytes.As<byte, ShaderByte>(), byteArrayType);
 
@@ -116,7 +116,8 @@ namespace Shaders.Systems
                 compiler.ReadUniformProperties(uniformProperties, uniformPropertyMembers);
                 operation.CreateOrSetArray(uniformProperties.AsSpan());
                 operation.CreateOrSetArray(uniformPropertyMembers.AsSpan());
-                if (request.type == ShaderType.Vertex)
+
+                if (type == ShaderType.Vertex)
                 {
                     using List<ShaderPushConstant> pushConstants = new();
                     using List<ShaderVertexInputAttribute> vertexInputAttributes = new();
@@ -126,7 +127,7 @@ namespace Shaders.Systems
                     operation.CreateOrSetArray(vertexInputAttributes.AsSpan());
                 }
 
-                if (request.type == ShaderType.Fragment)
+                if (type == ShaderType.Fragment)
                 {
                     using List<ShaderSamplerProperty> textureProperties = new();
                     compiler.ReadTextureProperties(textureProperties);
@@ -134,21 +135,14 @@ namespace Shaders.Systems
                 }
 
                 using List<ShaderStorageBuffer> storageBuffers = new();
-                compiler.ReadStorageBuffers(storageBuffers);
+                using List<ShaderStorageBufferMember> storageBufferMembers = new();
+                compiler.ReadStorageBuffers(storageBuffers, storageBufferMembers);
                 operation.CreateOrSetArray(storageBuffers.AsSpan());
+                operation.CreateOrSetArray(storageBufferMembers.AsSpan());
                 return true;
             }
 
             return false;
-        }
-
-        [Conditional("DEBUG")]
-        private static void ThrowIfUnknownShaderType(ShaderType type)
-        {
-            if (type == ShaderType.Unknown || type > ShaderType.Geometry)
-            {
-                throw new NotSupportedException($"Unknown shader type `{type}`");
-            }
         }
     }
 }

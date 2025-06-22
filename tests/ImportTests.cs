@@ -84,15 +84,15 @@ namespace Shaders.Tests
 
             Assert.That(vertexShader.UniformProperties.Length, Is.EqualTo(1));
             ShaderUniformProperty cameraInfo = vertexShader.UniformProperties[0];
-            Assert.That(cameraInfo.label.ToString(), Is.EqualTo("cameraInfo"));
+            Assert.That(cameraInfo.name.ToString(), Is.EqualTo("cameraInfo"));
             Assert.That(cameraInfo.typeName.ToString(), Is.EqualTo("CameraInfo"));
             Assert.That(cameraInfo.binding, Is.EqualTo(2));
             Assert.That(cameraInfo.set, Is.EqualTo(0));
-            Assert.That(vertexShader.GetMemberCount("cameraInfo"), Is.EqualTo(2));
+            Assert.That(vertexShader.GetUniformPropertyMemberCount("cameraInfo"), Is.EqualTo(2));
 
-            ShaderUniformPropertyMember member = vertexShader.GetMember("cameraInfo", 0);
+            ShaderUniformPropertyMember member = vertexShader.GetUniformPropertyMember("cameraInfo", 0);
             Assert.That(member.name.ToString(), Is.EqualTo("proj"));
-            member = vertexShader.GetMember("cameraInfo", 1);
+            member = vertexShader.GetUniformPropertyMember("cameraInfo", 1);
             Assert.That(member.name.ToString(), Is.EqualTo("view"));
 
             Assert.That(fragmentShader.SamplerProperties.Length, Is.EqualTo(1));
@@ -132,6 +132,9 @@ namespace Shaders.Tests
 
                 layout (binding = 3, set = 3) readonly buffer LotsOfData {
                     vec2 offsets[];
+                    vec4 rotation;
+                    vec3 position;
+                    vec3 scale;
                 } lotsOfData;
 
                 layout(location = 0) out vec3 fColor;
@@ -159,7 +162,7 @@ namespace Shaders.Tests
             Assert.That(storageBuffers.Length, Is.EqualTo(2));
 
             ShaderStorageBuffer instanceData = storageBuffers[0];
-            Assert.That(instanceData.label.ToString(), Is.EqualTo("instanceData"));
+            Assert.That(instanceData.name.ToString(), Is.EqualTo("instanceData"));
             Assert.That(instanceData.typeName.ToString(), Is.EqualTo("InstanceData"));
             Assert.That(instanceData.binding, Is.EqualTo(2));
             Assert.That(instanceData.set, Is.EqualTo(1));
@@ -167,12 +170,34 @@ namespace Shaders.Tests
             Assert.That(instanceData.flags, Is.EqualTo(ShaderStorageBuffer.Flags.ReadWrite));
 
             ShaderStorageBuffer lotsOfData = storageBuffers[1];
-            Assert.That(lotsOfData.label.ToString(), Is.EqualTo("lotsOfData"));
+            Assert.That(lotsOfData.name.ToString(), Is.EqualTo("lotsOfData"));
             Assert.That(lotsOfData.typeName.ToString(), Is.EqualTo("LotsOfData"));
             Assert.That(lotsOfData.binding, Is.EqualTo(3));
             Assert.That(lotsOfData.set, Is.EqualTo(3));
-            Assert.That(lotsOfData.byteLength, Is.EqualTo(8));
+            Assert.That(lotsOfData.byteLength, Is.EqualTo(48));
             //Assert.That(lotsOfData.flags, Is.EqualTo(ShaderStorageBuffer.Flags.ReadOnly)); //spvc isnt able to read the decorations for some reason
+
+            Assert.That(vertexShader.GetStorageBufferMemberCount("lotsOfData"), Is.EqualTo(4));
+            ShaderStorageBufferMember firstMember = vertexShader.GetStorageBufferMember("lotsOfData", 0);
+            Assert.That(firstMember.name.ToString(), Is.EqualTo("offsets"));
+            Assert.That(firstMember.type, Is.EqualTo(MetadataRegistry.GetType<Vector2>()));
+            Assert.That(firstMember.offset, Is.EqualTo(0));
+            //Assert.That(firstMember.flags.HasFlag(ShaderStorageBufferMember.Flags.Array), Is.True);
+
+            ShaderStorageBufferMember secondMember = vertexShader.GetStorageBufferMember("lotsOfData", 1);
+            Assert.That(secondMember.name.ToString(), Is.EqualTo("rotation"));
+            Assert.That(secondMember.type, Is.EqualTo(MetadataRegistry.GetType<Vector4>()));
+            Assert.That(secondMember.offset, Is.EqualTo(8));
+
+            ShaderStorageBufferMember thirdMember = vertexShader.GetStorageBufferMember("lotsOfData", 2);
+            Assert.That(thirdMember.name.ToString(), Is.EqualTo("position"));
+            Assert.That(thirdMember.type, Is.EqualTo(MetadataRegistry.GetType<Vector3>()));
+            Assert.That(thirdMember.offset, Is.EqualTo(24));
+
+            ShaderStorageBufferMember fourthMember = vertexShader.GetStorageBufferMember("lotsOfData", 3);
+            Assert.That(fourthMember.name.ToString(), Is.EqualTo("scale"));
+            Assert.That(fourthMember.type, Is.EqualTo(MetadataRegistry.GetType<Vector3>()));
+            Assert.That(fourthMember.offset, Is.EqualTo(36));
 
             Assert.That(vertexShader.VertexInputAttributes.Length, Is.EqualTo(2));
             ShaderVertexInputAttribute first = vertexShader.VertexInputAttributes[0];
