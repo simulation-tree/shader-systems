@@ -15,12 +15,12 @@ jobs:
         with:
           path: ${{ github.event.repository.name }}
             
-      - name: Checkout `worlds`
+      - name: Checkout `unmanaged`
         uses: actions/checkout@v4.1.2
         with:
-          repository: simulation-tree/worlds
+          repository: simulation-tree/unmanaged
           token: ${{ secrets.PAT }}
-          path: worlds
+          path: unmanaged
       
       - name: Checkout `simulation`
         uses: actions/checkout@v4.1.2
@@ -28,13 +28,6 @@ jobs:
           repository: simulation-tree/simulation
           token: ${{ secrets.PAT }}
           path: simulation
-      
-      - name: Checkout `unmanaged`
-        uses: actions/checkout@v4.1.2
-        with:
-          repository: simulation-tree/unmanaged
-          token: ${{ secrets.PAT }}
-          path: unmanaged
       
       - name: Checkout `collections`
         uses: actions/checkout@v4.1.2
@@ -64,6 +57,13 @@ jobs:
           token: ${{ secrets.PAT }}
           path: data-systems
       
+      - name: Checkout `worlds`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: simulation-tree/worlds
+          token: ${{ secrets.PAT }}
+          path: worlds
+      
       - name: Checkout `types`
         uses: actions/checkout@v4.1.2
         with:
@@ -74,7 +74,9 @@ jobs:
       - name: Setup
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version:  |
+            9.0.x
+            10.0.x
 
       - name: Set VERSION variable from tag
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
@@ -92,7 +94,7 @@ jobs:
         run: dotnet build "${{ github.event.repository.name }}/tests" -c Release /p:Version=${VERSION}
             
       - name: Test
-        run: dotnet test "${{ github.event.repository.name }}/tests" -c Release --logger "trx"
+        run: dotnet test "${{ github.event.repository.name }}/tests" -c Release --logger "trx" --framework net10.0
             
       - name: Pack `Shaders.Systems`
         run: dotnet pack "${{ github.event.repository.name }}/source" /p:Version=${VERSION} --no-build --output .
