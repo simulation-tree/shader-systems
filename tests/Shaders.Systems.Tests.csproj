@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Shaders.Tests</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -36,13 +36,6 @@
     <ProjectReference Include="..\..\worlds\generator\Worlds.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
     <ProjectReference Include="..\..\types\generator\Types.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
     <ProjectReference Include="..\..\simulation\generator\Simulation.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Analyzer Include="..\..\unmanaged\generator\bin\$(Configuration)\netstandard2.0\Unmanaged.Generator.dll" />
-    <Analyzer Include="..\..\worlds\generator\bin\$(Configuration)\netstandard2.0\Worlds.Generator.dll" />
-    <Analyzer Include="..\..\types\generator\bin\$(Configuration)\netstandard2.0\Types.Generator.dll" />
-    <Analyzer Include="..\..\simulation\generator\bin\$(Configuration)\netstandard2.0\Simulation.Generator.dll" />
   </ItemGroup>
 
   <ItemGroup>
