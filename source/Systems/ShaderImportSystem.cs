@@ -47,7 +47,7 @@ namespace Shaders.Systems
             for (int c = 0; c < chunks.Length; c++)
             {
                 Chunk chunk = chunks[c];
-                if (chunk.componentTypes.Contains(requestType))
+                if (chunk.ComponentTypes.Contains(requestType))
                 {
                     ReadOnlySpan<uint> entities = chunk.Entities;
                     ComponentEnumerator<IsShaderRequest> components = chunk.GetComponents<IsShaderRequest>(requestType);
@@ -92,7 +92,7 @@ namespace Shaders.Systems
         {
             ShaderType type = request.flags.GetShaderType();
 
-            //todo: should shaders be cached based on address? what if its loaded from file on disk and the file changes?
+            // todo: should shaders be cached based on address? what if its loaded from file on disk and the file changes?
             LoadData message = new(request.address);
             simulator.Broadcast(ref message);
             if (message.TryConsume(out ByteReader data))
@@ -109,7 +109,7 @@ namespace Shaders.Systems
                 operation.AddOrSetComponent(shader, shaderType);
                 operation.CreateOrSetArray(spvBytes.As<byte, ShaderByte>(), byteArrayType);
 
-                //fill metadata
+                // fill metadata
                 ShaderCompilerContext.Compiler compiler = shaderCompiler.GetCompiler(spvBytes, Vortice.SpirvCross.Backend.GLSL);
                 using List<ShaderUniformPropertyMember> uniformPropertyMembers = new();
                 using List<ShaderUniformProperty> uniformProperties = new();
